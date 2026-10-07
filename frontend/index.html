@@ -1,0 +1,3252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Security AI</title>
+
+    <style>
+        :root {
+            --bg: #07111f;
+            --bg-secondary: #0b1728;
+            --card: rgba(15, 29, 49, 0.88);
+            --card-hover: #14243a;
+            --border: rgba(148, 163, 184, 0.14);
+            --text: #e8f0fa;
+            --muted: #8ea3bb;
+            --primary: #38bdf8;
+            --primary-dark: #0284c7;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --sidebar: #06101d;
+            --input: #0a1727;
+            --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+        }
+
+        body.light {
+            --bg: #f3f7fb;
+            --bg-secondary: #eaf1f8;
+            --card: rgba(255, 255, 255, 0.94);
+            --card-hover: #f7fbff;
+            --border: rgba(15, 23, 42, 0.1);
+            --text: #102033;
+            --muted: #64748b;
+            --primary: #0284c7;
+            --primary-dark: #0369a1;
+            --sidebar: #ffffff;
+            --input: #f8fafc;
+            --shadow: 0 15px 40px rgba(15, 23, 42, 0.09);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Inter, Segoe UI, Arial, sans-serif;
+            background:
+                radial-gradient(circle at 20% 10%, rgba(14, 165, 233, 0.09), transparent 28%),
+                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.07), transparent 25%),
+                var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: 0.25s;
+        }
+
+        button,
+        input,
+        textarea {
+            font-family: inherit;
+        }
+
+        /* ================= SIDEBAR ================= */
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 270px;
+            height: 100vh;
+            background: var(--sidebar);
+            border-right: 1px solid var(--border);
+            padding: 22px 15px;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 10px 25px;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 13px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            box-shadow: 0 10px 25px rgba(14, 165, 233, 0.25);
+            font-size: 22px;
+        }
+
+        .brand h2 {
+            font-size: 16px;
+            letter-spacing: 0.3px;
+        }
+
+        .brand span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 3px;
+        }
+
+        .menu-title {
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.4px;
+            padding: 10px 12px;
+            text-transform: uppercase;
+        }
+
+        .nav-btn {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            padding: 12px 13px;
+            margin: 3px 0;
+            border-radius: 10px;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: 0.2s;
+            font-size: 13px;
+        }
+
+        .nav-btn:hover {
+            color: var(--text);
+            background: var(--card-hover);
+        }
+
+        .nav-btn.active {
+            color: white;
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.22), rgba(37, 99, 235, 0.12));
+            border: 1px solid rgba(56, 189, 248, 0.15);
+        }
+
+        .nav-icon {
+            width: 23px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .sidebar-bottom {
+            margin-top: 20px;
+            padding: 15px 10px;
+            border-top: 1px solid var(--border);
+        }
+
+        .mini-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--success);
+        }
+
+        /* ================= MAIN ================= */
+
+        .main {
+            margin-left: 270px;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            height: 76px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(7, 17, 31, 0.58);
+            backdrop-filter: blur(18px);
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+
+        body.light .topbar {
+            background: rgba(255, 255, 255, 0.75);
+        }
+
+        .page-heading h1 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .page-heading p {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .system-status {
+            padding: 8px 12px;
+            border-radius: 30px;
+            background: rgba(34, 197, 94, 0.08);
+            border: 1px solid rgba(34, 197, 94, 0.18);
+            color: #4ade80;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .icon-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 17px;
+        }
+
+        .content {
+            padding: 30px;
+            max-width: 1500px;
+        }
+
+        /* ================= PAGES ================= */
+
+        .page {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .welcome {
+            margin-bottom: 25px;
+        }
+
+        .welcome h2 {
+            font-size: 27px;
+            margin-bottom: 8px;
+        }
+
+        .welcome p {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ================= CARDS ================= */
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 22px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(15px);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .card-title h3 {
+            font-size: 15px;
+        }
+
+        .card-title p {
+            color: var(--muted);
+            font-size: 11px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .grid-3 {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .grid-4 {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        /* ================= STAT CARDS ================= */
+
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: "";
+            position: absolute;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            right: -35px;
+            top: -35px;
+            background: rgba(56, 189, 248, 0.07);
+        }
+
+        .stat-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: rgba(56, 189, 248, 0.1);
+            display: grid;
+            place-items: center;
+            margin-bottom: 14px;
+        }
+
+        .stat-value {
+            font-size: 27px;
+            font-weight: 750;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        /* ================= FORMS ================= */
+
+        label {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            background: var(--input);
+            color: var(--text);
+            border: 1px solid var(--border);
+            outline: none;
+            border-radius: 10px;
+            padding: 12px 13px;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: rgba(56, 189, 248, 0.55);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.07);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 125px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 10px;
+            padding: 11px 17px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 650;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            color: white;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            box-shadow: 0 8px 22px rgba(14, 165, 233, 0.18);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 27px rgba(14, 165, 233, 0.28);
+        }
+
+        .btn-secondary {
+            color: var(--text);
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+        }
+
+        .btn-danger {
+            color: white;
+            background: #dc2626;
+        }
+
+        .button-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin-top: 15px;
+        }
+
+        /* ================= CHAT ================= */
+
+        .chat-box {
+            height: 420px;
+            overflow-y: auto;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            padding: 17px;
+            margin-bottom: 14px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .message.ai {
+            background: var(--card-hover);
+            border: 1px solid var(--border);
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            color: white;
+            margin-left: auto;
+        }
+
+        .message-label {
+            font-size: 10px;
+            font-weight: 700;
+            opacity: 0.7;
+            margin-bottom: 4px;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 9px;
+        }
+
+        /* ================= RESULT ================= */
+
+        .result {
+            margin-top: 18px;
+            padding: 18px;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 13px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result h4 {
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .result-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            padding: 9px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .result-line:last-child {
+            border-bottom: 0;
+        }
+
+        .result-line span:first-child {
+            color: var(--muted);
+        }
+
+        .result-line span:last-child {
+            text-align: right;
+            word-break: break-word;
+        }
+
+        /* ================= RISK ================= */
+
+        .risk-box {
+            margin: 15px 0;
+            padding: 17px;
+            border-radius: 13px;
+            background: var(--card);
+            border: 1px solid var(--border);
+        }
+
+        .risk-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .risk-number {
+            font-size: 29px;
+            font-weight: 800;
+        }
+
+        .risk-label {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border-radius: 20px;
+        }
+
+        .risk-bar {
+            width: 100%;
+            height: 9px;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .risk-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 20px;
+            transition: width 0.7s ease;
+        }
+
+        .low {
+            color: #4ade80;
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .medium {
+            color: #fbbf24;
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .high {
+            color: #f87171;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .risk-fill.low {
+            background: #22c55e;
+        }
+
+        .risk-fill.medium {
+            background: #f59e0b;
+        }
+
+        .risk-fill.high {
+            background: #ef4444;
+        }
+
+        /* ================= FEATURE GRID ================= */
+
+        .feature-card {
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(56, 189, 248, 0.25);
+        }
+
+        .feature-icon {
+            font-size: 23px;
+            margin-bottom: 13px;
+        }
+
+        .feature-card h3 {
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .feature-card p {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        /* ================= HISTORY ================= */
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .history-table th {
+            color: var(--muted);
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-table td {
+            padding: 13px 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .history-table tr:hover {
+            background: var(--card-hover);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* ================= ALERTS ================= */
+
+        .alert {
+            padding: 15px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            background: var(--input);
+        }
+
+        .alert-title {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .alert p {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        /* ================= ABOUT ================= */
+
+        .about-hero {
+            padding: 35px;
+            border-radius: 18px;
+            background:
+                linear-gradient(135deg, rgba(14, 165, 233, 0.13), rgba(37, 99, 235, 0.05)),
+                var(--card);
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .about-hero h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .about-hero p {
+            color: var(--muted);
+            max-width: 800px;
+            line-height: 1.7;
+            font-size: 13px;
+        }
+
+        .tech-tag {
+            display: inline-block;
+            padding: 7px 10px;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--muted);
+            font-size: 11px;
+            margin: 4px;
+        }
+
+        /* ================= LOADING ================= */
+
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .empty {
+            padding: 30px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        /* ================= MOBILE ================= */
+
+        .mobile-menu {
+            display: none;
+        }
+
+        @media (max-width: 1000px) {
+            .sidebar {
+                width: 230px;
+            }
+
+            .main {
+                margin-left: 230px;
+            }
+
+            .grid-4 {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 760px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: 0.25s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main {
+                margin-left: 0;
+            }
+
+            .mobile-menu {
+                display: block;
+            }
+
+            .topbar {
+                padding: 0 15px;
+            }
+
+            .content {
+                padding: 18px;
+            }
+
+            .grid-2,
+            .grid-3,
+            .grid-4 {
+                grid-template-columns: 1fr;
+            }
+
+            .system-status {
+                display: none;
+            }
+
+            .welcome h2 {
+                font-size: 23px;
+            }
+
+            .history-table {
+                min-width: 700px;
+            }
+
+            .table-wrapper {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ================= SIDEBAR ================= -->
+
+    <aside class="sidebar" id="sidebar">
+
+        <div class="brand">
+            <div class="brand-icon">🛡️</div>
+            <div>
+                <h2>Cyber Security AI</h2>
+                <span>AI-Powered Security Center</span>
+            </div>
+        </div>
+
+        <div class="menu-title">Security Tools</div>
+
+        <button class="nav-btn active" onclick="showPage('chat', this)">
+            <span class="nav-icon">🤖</span>
+            AI Security Assistant
+        </button>
+
+        <button class="nav-btn" onclick="showPage('url', this)">
+            <span class="nav-icon">🔗</span>
+            URL Safety Scanner
+        </button>
+
+        <button class="nav-btn" onclick="showPage('file', this)">
+            <span class="nav-icon">📁</span>
+            File Security Scanner
+        </button>
+
+        <button class="nav-btn" onclick="showPage('phishing', this)">
+            <span class="nav-icon">🎣</span>
+            Phishing Detector
+        </button>
+
+        <button class="nav-btn" onclick="showPage('password', this)">
+            <span class="nav-icon">🔐</span>
+            Password Checker
+        </button>
+
+        <button class="nav-btn" onclick="showPage('ip', this)">
+            <span class="nav-icon">🌐</span>
+            IP / Domain Info
+        </button>
+
+        <div class="menu-title">Security Center</div>
+
+        <button class="nav-btn" onclick="showPage('report', this)">
+            <span class="nav-icon">📄</span>
+            Security Report
+        </button>
+
+        <button class="nav-btn" onclick="showPage('alerts', this)">
+            <span class="nav-icon">🚨</span>
+            Threat Alerts
+        </button>
+
+        <button class="nav-btn" onclick="showPage('dashboard', this)">
+            <span class="nav-icon">📊</span>
+            Advanced Dashboard
+        </button>
+
+        <button class="nav-btn" onclick="showPage('history', this)">
+            <span class="nav-icon">📜</span>
+            Scan History
+        </button>
+
+        <div class="menu-title">Project</div>
+
+        <button class="nav-btn" onclick="showPage('about', this)">
+            <span class="nav-icon">ℹ️</span>
+            About Project
+        </button>
+
+        <div class="sidebar-bottom">
+            <div class="mini-status">
+                <span class="dot"></span>
+                All systems operational
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- ================= MAIN ================= -->
+
+    <main class="main">
+
+        <header class="topbar">
+
+            <div class="top-actions">
+                <button class="icon-btn mobile-menu" onclick="toggleSidebar()">☰</button>
+
+                <div class="page-heading">
+                    <h1 id="pageTitle">AI Security Assistant</h1>
+                    <p id="pageSubtitle">Intelligent cybersecurity assistance</p>
+                </div>
+            </div>
+
+            <div class="top-actions">
+                <div class="system-status">
+                    <span class="dot"></span>
+                    System Online
+                </div>
+
+                <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">
+                    ☀️
+                </button>
+            </div>
+
+        </header>
+
+        <section class="content">
+
+            <!-- ================= CHAT ================= -->
+
+            <div class="page active" id="chat">
+
+                <div class="welcome">
+                    <h2>Security Intelligence Assistant</h2>
+                    <p>
+                        Ask questions about cybersecurity, privacy, phishing,
+                        online safety and defensive security.
+                    </p>
+                </div>
+
+                <div class="card">
+
+                    <div class="chat-box" id="chatBox">
+
+                        <div class="message ai">
+                            <div class="message-label">CYBER SECURITY AI</div>
+                            Hello! I am your AI Security Assistant.
+                            How can I help you with cybersecurity today?
+                        </div>
+
+                    </div>
+
+                    <div class="chat-input-row">
+                        <input
+                            id="chatInput"
+                            type="text"
+                            placeholder="Ask a cybersecurity question..."
+                            onkeydown="if(event.key === 'Enter') sendChat()"
+                        >
+
+                        <button class="btn btn-primary" onclick="sendChat()">
+                            Send
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= URL ================= -->
+
+            <div class="page" id="url">
+
+                <div class="welcome">
+                    <h2>URL Safety Scanner</h2>
+                    <p>Analyze a URL for basic security indicators and suspicious patterns.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>Website Security Analysis</h3>
+                            <p>Enter a website URL to analyze it</p>
+                        </div>
+                        <span>🔗</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Website URL</label>
+                        <input id="urlInput" placeholder="https://example.com">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="scanURL()">
+                        🔍 Scan URL
+                    </button>
+
+                    <div class="result" id="urlResult"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= FILE ================= -->
+
+            <div class="page" id="file">
+
+                <div class="welcome">
+                    <h2>File Security Scanner</h2>
+                    <p>Check basic file properties, SHA-256 hash and suspicious indicators.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>File Analysis</h3>
+                            <p>Your file is analyzed locally for basic indicators.</p>
+                        </div>
+                        <span>📁</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Select File</label>
+                        <input id="fileInput" type="file">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="scanFile()">
+                        🔍 Scan File
+                    </button>
+
+                    <div class="result" id="fileResult"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= PHISHING ================= -->
+
+            <div class="page" id="phishing">
+
+                <div class="welcome">
+                    <h2>Phishing Detector</h2>
+                    <p>Analyze a message for common phishing and social-engineering indicators.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>Message Analysis</h3>
+                            <p>Paste a suspicious message below.</p>
+                        </div>
+                        <span>🎣</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Message / Email</label>
+                        <textarea
+                            id="phishingInput"
+                            placeholder="Paste the suspicious message here..."
+                        ></textarea>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="detectPhishing()">
+                        🛡️ Detect Phishing
+                    </button>
+
+                    <div class="result" id="phishingResult"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= PASSWORD ================= -->
+
+            <div class="page" id="password">
+
+                <div class="welcome">
+                    <h2>Password Strength Checker</h2>
+                    <p>Check password strength locally. Passwords are not stored in scan history.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>Password Analysis</h3>
+                            <p>Use a sample password for testing.</p>
+                        </div>
+                        <span>🔐</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Password</label>
+
+                        <div style="display:flex; gap:8px;">
+                            <input
+                                id="passwordInput"
+                                type="password"
+                                placeholder="Enter password"
+                            >
+
+                            <button
+                                class="btn btn-secondary"
+                                onclick="togglePassword()"
+                            >
+                                👁
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <button class="btn btn-primary" onclick="checkPassword()">
+                        🔐 Check Strength
+                    </button>
+
+                    <div class="result" id="passwordResult"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= IP ================= -->
+
+            <div class="page" id="ip">
+
+                <div class="welcome">
+                    <h2>IP / Domain Intelligence</h2>
+                    <p>Retrieve basic DNS and network information for a domain or IP.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>Network Lookup</h3>
+                            <p>DNS information only — no port scanning.</p>
+                        </div>
+                        <span>🌐</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>IP Address / Domain</label>
+                        <input id="ipInput" placeholder="google.com">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="lookupIP()">
+                        🌐 Lookup
+                    </button>
+
+                    <div class="result" id="ipResult"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= REPORT ================= -->
+
+            <div class="page" id="report">
+
+                <div class="welcome">
+                    <h2>Professional Security Report</h2>
+                    <p>Generate and download a structured cybersecurity report.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>Report Generator</h3>
+                            <p>Enter findings or scan information.</p>
+                        </div>
+                        <span>📄</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Security Findings</label>
+
+                        <textarea
+                            id="reportInput"
+                            style="min-height:220px;"
+                            placeholder="Enter security findings here..."
+                        ></textarea>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="generateReport()">
+                        📄 Generate Report
+                    </button>
+
+                    <div class="result" id="reportResult"></div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= ALERTS ================= -->
+
+            <div class="page" id="alerts">
+
+                <div class="welcome">
+                    <h2>Threat Alerts</h2>
+                    <p>Security awareness alerts and defensive recommendations.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>Security Alerts</h3>
+                            <p id="alertsUpdated">Loading...</p>
+                        </div>
+                        <span>🚨</span>
+                    </div>
+
+                    <div id="alertsContainer">
+                        <div class="loading">
+                            <span class="spinner"></span>
+                            Loading alerts...
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= DASHBOARD ================= -->
+
+            <div class="page" id="dashboard">
+
+                <div class="welcome">
+                    <h2>Security Operations Dashboard</h2>
+                    <p>Monitor scan activity, risk levels and security features.</p>
+                </div>
+
+                <div class="grid grid-4" id="dashboardStats">
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">🔎</div>
+                        <div class="stat-value" id="totalScans">0</div>
+                        <div class="stat-label">Total Scans</div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-value" id="highRisks">0</div>
+                        <div class="stat-label">High Risk</div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="avgRisk">0</div>
+                        <div class="stat-label">Average Risk</div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">🛡️</div>
+                        <div class="stat-value">18</div>
+                        <div class="stat-label">Security Features</div>
+                    </div>
+
+                </div>
+
+                <br>
+
+                <div class="grid grid-2">
+
+                    <div class="card">
+
+                        <div class="card-title">
+                            <div>
+                                <h3>Recent Security Activity</h3>
+                                <p>Latest scans</p>
+                            </div>
+                        </div>
+
+                        <div id="recentScans">
+                            <div class="empty">
+                                No scan activity yet.
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="card">
+
+                        <div class="card-title">
+                            <div>
+                                <h3>Security Tips</h3>
+                                <p>Recommended practices</p>
+                            </div>
+                        </div>
+
+                        <div id="securityTips">
+                            <div class="alert">
+                                <div class="alert-title">🔐 Use strong passwords</div>
+                                <p>Use unique passwords for important accounts.</p>
+                            </div>
+
+                            <div class="alert">
+                                <div class="alert-title">🎣 Watch for phishing</div>
+                                <p>Verify links and senders before opening suspicious messages.</p>
+                            </div>
+
+                            <div class="alert">
+                                <div class="alert-title">🔄 Keep software updated</div>
+                                <p>Install security updates from trusted sources.</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= HISTORY ================= -->
+
+            <div class="page" id="history">
+
+                <div class="welcome">
+                    <h2>Scan History</h2>
+                    <p>Review previous security scans and their risk scores.</p>
+                </div>
+
+                <div class="card">
+
+                    <div class="card-title">
+
+                        <div>
+                            <h3>Security Scan History</h3>
+                            <p>Your recent scan activity</p>
+                        </div>
+
+                        <button
+                            class="btn btn-danger"
+                            onclick="clearHistory()"
+                        >
+                            🗑 Clear History
+                        </button>
+
+                    </div>
+
+                    <div class="table-wrapper">
+
+                        <table class="history-table">
+
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Target</th>
+                                    <th>Risk</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="historyBody">
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty">
+                                            No scan history available.
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ================= ABOUT ================= -->
+
+            <div class="page" id="about">
+
+                <div class="about-hero">
+
+                    <h2>🛡️ Cyber Security AI</h2>
+
+                    <p>
+                        Cyber Security AI is an educational defensive cybersecurity
+                        platform designed to combine AI assistance with practical
+                        security-analysis tools. The project focuses on security
+                        awareness, basic risk analysis and safe defensive practices.
+                    </p>
+
+                </div>
+
+                <div class="grid grid-2">
+
+                    <div class="card">
+
+                        <div class="card-title">
+                            <h3>🎯 Project Objective</h3>
+                        </div>
+
+                        <p style="color:var(--muted);font-size:13px;line-height:1.7;">
+                            The goal is to provide users with an easy-to-use security
+                            center where they can learn about cybersecurity and
+                            perform basic defensive checks from one interface.
+                        </p>
+
+                    </div>
+
+                    <div class="card">
+
+                        <div class="card-title">
+                            <h3>⚙️ Technology Stack</h3>
+                        </div>
+
+                        <div>
+                            <span class="tech-tag">Python</span>
+                            <span class="tech-tag">Flask</span>
+                            <span class="tech-tag">HTML5</span>
+                            <span class="tech-tag">CSS3</span>
+                            <span class="tech-tag">JavaScript</span>
+                            <span class="tech-tag">Gemini AI</span>
+                            <span class="tech-tag">Groq AI</span>
+                            <span class="tech-tag">ReportLab</span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <br>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <div>
+                            <h3>🚀 Platform Features</h3>
+                            <p>9 core features + 9 advanced upgrades</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-3">
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">🤖</div>
+                            <h3>AI Security Assistant</h3>
+                            <p>AI-powered cybersecurity guidance.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">🔗</div>
+                            <h3>URL Safety Scanner</h3>
+                            <p>Basic URL security analysis.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">📁</div>
+                            <h3>File Security Scanner</h3>
+                            <p>File metadata and SHA-256 analysis.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">🎣</div>
+                            <h3>Phishing Detector</h3>
+                            <p>Detect common phishing indicators.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">🔐</div>
+                            <h3>Password Checker</h3>
+                            <p>Check password strength.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">🌐</div>
+                            <h3>IP / Domain Info</h3>
+                            <p>Basic DNS and network information.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">📄</div>
+                            <h3>Security Reports</h3>
+                            <p>Generate structured security reports.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">🚨</div>
+                            <h3>Threat Alerts</h3>
+                            <p>Security awareness alerts.</p>
+                        </div>
+
+                        <div class="feature-card card">
+                            <div class="feature-icon">📊</div>
+                            <h3>Security Dashboard</h3>
+                            <p>Monitor security activity.</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <br>
+
+                <div class="card">
+
+                    <div class="card-title">
+                        <h3>✨ Phase 2 Upgrades</h3>
+                    </div>
+
+                    <div class="grid grid-3">
+
+                        <div class="alert">
+                            <div class="alert-title">📜 Scan History</div>
+                            <p>Keep track of recent security scans.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">📈 Risk Score System</div>
+                            <p>Security findings receive a 0–100 heuristic score.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">📄 Professional PDF</div>
+                            <p>Generate downloadable security reports.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">📊 Advanced Dashboard</div>
+                            <p>Security activity and statistics.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">💡 Risk Explanation</div>
+                            <p>Understand why a finding may be risky.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">🧠 Smart Recommendations</div>
+                            <p>Receive defensive security recommendations.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">☀️ Light / Dark Mode</div>
+                            <p>Choose your preferred interface theme.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">⬇️ Download Reports</div>
+                            <p>Download generated security reports.</p>
+                        </div>
+
+                        <div class="alert">
+                            <div class="alert-title">ℹ️ Project Information</div>
+                            <p>Learn about the project's purpose and technology.</p>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <br>
+
+                <div class="card">
+
+                    <h3 style="margin-bottom:10px;">⚠️ Important Note</h3>
+
+                    <p style="color:var(--muted);font-size:12px;line-height:1.7;">
+                        This platform is designed for educational and defensive
+                        security purposes. Its scanners provide basic or heuristic
+                        analysis and should not be treated as a replacement for
+                        professional security tools.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <script>
+
+        /* =========================================================
+           GLOBAL
+        ========================================================= */
+
+        const titles = {
+
+            chat: [
+                "AI Security Assistant",
+                "Intelligent cybersecurity assistance"
+            ],
+
+            url: [
+                "URL Safety Scanner",
+                "Analyze websites for security indicators"
+            ],
+
+            file: [
+                "File Security Scanner",
+                "Analyze basic file security properties"
+            ],
+
+            phishing: [
+                "Phishing Detector",
+                "Identify common phishing indicators"
+            ],
+
+            password: [
+                "Password Checker",
+                "Check password strength securely"
+            ],
+
+            ip: [
+                "IP / Domain Info",
+                "Basic DNS and network intelligence"
+            ],
+
+            report: [
+                "Security Report",
+                "Generate professional security reports"
+            ],
+
+            alerts: [
+                "Threat Alerts",
+                "Security awareness and alerts"
+            ],
+
+            dashboard: [
+                "Advanced Dashboard",
+                "Security operations overview"
+            ],
+
+            history: [
+                "Scan History",
+                "Review previous security scans"
+            ],
+
+            about: [
+                "About Project",
+                "Cyber Security AI project information"
+            ]
+
+        };
+
+
+        /* =========================================================
+           SAFE JSON FETCH
+        ========================================================= */
+
+        async function safeFetchJSON(url, options = {}) {
+
+            const response = await fetch(url, options);
+
+            const text = await response.text();
+
+            let data;
+
+            try {
+                data = JSON.parse(text);
+            } catch (error) {
+                throw new Error(
+                    "Server returned an invalid response. HTTP " +
+                    response.status
+                );
+            }
+
+            if (!response.ok) {
+                throw new Error(
+                    data.error ||
+                    data.message ||
+                    "Request failed."
+                );
+            }
+
+            return data;
+        }
+
+
+        /* =========================================================
+           PAGE NAVIGATION
+        ========================================================= */
+
+        function showPage(pageId, button) {
+
+            document.querySelectorAll(".page").forEach(page => {
+                page.classList.remove("active");
+            });
+
+            const page = document.getElementById(pageId);
+
+            if (page) {
+                page.classList.add("active");
+            }
+
+            document.querySelectorAll(".nav-btn").forEach(btn => {
+                btn.classList.remove("active");
+            });
+
+            if (button) {
+                button.classList.add("active");
+            }
+
+            if (titles[pageId]) {
+
+                document.getElementById("pageTitle").textContent =
+                    titles[pageId][0];
+
+                document.getElementById("pageSubtitle").textContent =
+                    titles[pageId][1];
+            }
+
+            if (pageId === "alerts") {
+                loadThreatAlerts();
+            }
+
+            if (pageId === "dashboard") {
+                loadDashboard();
+            }
+
+            if (pageId === "history") {
+                loadHistory();
+            }
+
+            document.getElementById("sidebar").classList.remove("open");
+        }
+
+
+        function toggleSidebar() {
+
+            document
+                .getElementById("sidebar")
+                .classList.toggle("open");
+        }
+
+
+        /* =========================================================
+           THEME
+        ========================================================= */
+
+        function toggleTheme() {
+
+            document.body.classList.toggle("light");
+
+            const isLight =
+                document.body.classList.contains("light");
+
+            localStorage.setItem(
+                "cyberTheme",
+                isLight ? "light" : "dark"
+            );
+
+            document.getElementById("themeBtn").textContent =
+                isLight ? "🌙" : "☀️";
+        }
+
+
+        function loadTheme() {
+
+            const theme =
+                localStorage.getItem("cyberTheme");
+
+            if (theme === "light") {
+
+                document.body.classList.add("light");
+
+                document.getElementById("themeBtn").textContent = "🌙";
+            }
+        }
+
+
+        /* =========================================================
+           HTML ESCAPE
+        ========================================================= */
+
+        function escapeHTML(value) {
+
+            if (value === null || value === undefined) {
+                return "";
+            }
+
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+
+        /* =========================================================
+           RISK SCORE
+        ========================================================= */
+
+        function getRiskClass(score) {
+
+            score = Number(score) || 0;
+
+            if (score >= 70) {
+                return "high";
+            }
+
+            if (score >= 30) {
+                return "medium";
+            }
+
+            return "low";
+        }
+
+
+        function getRiskLabel(score) {
+
+            score = Number(score) || 0;
+
+            if (score >= 70) {
+                return "HIGH RISK";
+            }
+
+            if (score >= 30) {
+                return "MEDIUM RISK";
+            }
+
+            return "LOW RISK";
+        }
+
+
+        function riskHTML(score) {
+
+            score = Math.max(
+                0,
+                Math.min(100, Number(score) || 0)
+            );
+
+            const cls = getRiskClass(score);
+            const label = getRiskLabel(score);
+
+            return `
+
+                <div class="risk-box">
+
+                    <div class="risk-top">
+
+                        <div>
+                            <div style="font-size:10px;color:var(--muted);">
+                                HEURISTIC RISK SCORE
+                            </div>
+
+                            <div class="risk-number">
+                                ${score}
+                                <span style="font-size:13px;color:var(--muted);">
+                                    / 100
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="risk-label ${cls}">
+                            ${label}
+                        </div>
+
+                    </div>
+
+                    <div class="risk-bar">
+
+                        <div
+                            class="risk-fill ${cls}"
+                            style="width:${score}%"
+                        ></div>
+
+                    </div>
+
+                </div>
+            `;
+        }
+
+
+        /* =========================================================
+           AI CHAT
+        ========================================================= */
+
+        async function sendChat() {
+
+            const input =
+                document.getElementById("chatInput");
+
+            const message = input.value.trim();
+
+            if (!message) {
+                return;
+            }
+
+            const chatBox =
+                document.getElementById("chatBox");
+
+            chatBox.innerHTML += `
+                <div class="message user">
+                    <div class="message-label">YOU</div>
+                    ${escapeHTML(message)}
+                </div>
+            `;
+
+            input.value = "";
+
+            chatBox.innerHTML += `
+                <div class="message ai" id="chatLoading">
+                    <div class="loading">
+                        <span class="spinner"></span>
+                        AI is analyzing...
+                    </div>
+                </div>
+            `;
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/chat",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            message: message
+                        })
+                    }
+                );
+
+                document.getElementById("chatLoading").remove();
+
+                chatBox.innerHTML += `
+                    <div class="message ai">
+                        <div class="message-label">
+                            ${escapeHTML(data.provider || "AI")}
+                        </div>
+                        ${escapeHTML(data.reply || "No response received.")}
+                    </div>
+                `;
+
+            } catch (error) {
+
+                document.getElementById("chatLoading").remove();
+
+                chatBox.innerHTML += `
+                    <div class="message ai">
+                        <div class="message-label">SYSTEM</div>
+                        ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+
+        /* =========================================================
+           RISK TOOLS
+        ========================================================= */
+
+        function riskToolsHTML(data, source, target) {
+
+            return `
+
+                ${riskHTML(data.risk_score)}
+
+                <div class="button-row">
+
+                    <button
+                        class="btn btn-secondary"
+                        onclick='explainRisk(${JSON.stringify(
+                            source
+                        )}, ${JSON.stringify(
+                            target
+                        )}, ${JSON.stringify(data)
+                        })'
+                    >
+                        💡 Why is this risky?
+                    </button>
+
+                    <button
+                        class="btn btn-secondary"
+                        onclick='getRecommendations(${JSON.stringify(
+                            source
+                        )}, ${JSON.stringify(
+                            target
+                        )}, ${JSON.stringify(data)
+                        })'
+                    >
+                        🧠 Smart Recommendations
+                    </button>
+
+                </div>
+
+                <div id="aiRiskExplanation"></div>
+                <div id="smartRecommendations"></div>
+            `;
+        }
+
+
+        /* =========================================================
+           URL SCANNER
+        ========================================================= */
+
+        async function scanURL() {
+
+            const url =
+                document.getElementById("urlInput")
+                    .value.trim();
+
+            const result =
+                document.getElementById("urlResult");
+
+            if (!url) {
+                alert("Please enter a URL.");
+                return;
+            }
+
+            result.className = "result show";
+
+            result.innerHTML = `
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Scanning URL...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/scan-url",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            url: url
+                        })
+                    }
+                );
+
+                result.innerHTML = `
+
+                    <h4>🔗 URL Scan Result</h4>
+
+                    ${riskToolsHTML(data, "url", url)}
+
+                    <div class="result-line">
+                        <span>Status</span>
+                        <span>${escapeHTML(data.status || "Unknown")}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>URL</span>
+                        <span>${escapeHTML(data.url || url)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Details</span>
+                        <span>${escapeHTML(data.details || "No additional details.")}</span>
+                    </div>
+                `;
+
+            } catch (error) {
+
+                result.innerHTML = `
+                    <div class="high" style="padding:12px;border-radius:9px;">
+                        ❌ ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           FILE SCANNER
+        ========================================================= */
+
+        async function scanFile() {
+
+            const input =
+                document.getElementById("fileInput");
+
+            const result =
+                document.getElementById("fileResult");
+
+            if (!input.files.length) {
+                alert("Please select a file.");
+                return;
+            }
+
+            const formData = new FormData();
+
+            formData.append(
+                "file",
+                input.files[0]
+            );
+
+            result.className = "result show";
+
+            result.innerHTML = `
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Analyzing file...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/scan-file",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+                result.innerHTML = `
+
+                    <h4>📁 File Scan Result</h4>
+
+                    ${riskToolsHTML(
+                        data,
+                        "file",
+                        data.filename || input.files[0].name
+                    )}
+
+                    <div class="result-line">
+                        <span>Filename</span>
+                        <span>${escapeHTML(data.filename)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Extension</span>
+                        <span>${escapeHTML(data.extension)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Size</span>
+                        <span>${escapeHTML(data.size)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Status</span>
+                        <span>${escapeHTML(data.status)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>SHA-256</span>
+                        <span>${escapeHTML(data.sha256)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Warnings</span>
+                        <span>${escapeHTML(
+                            Array.isArray(data.warnings)
+                                ? data.warnings.join(", ")
+                                : data.warnings || "None"
+                        )}</span>
+                    </div>
+
+                `;
+
+            } catch (error) {
+
+                result.innerHTML = `
+                    <div class="high" style="padding:12px;border-radius:9px;">
+                        ❌ ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           PHISHING
+        ========================================================= */
+
+        async function detectPhishing() {
+
+            const message =
+                document.getElementById("phishingInput")
+                    .value.trim();
+
+            const result =
+                document.getElementById("phishingResult");
+
+            if (!message) {
+                alert("Please enter a message.");
+                return;
+            }
+
+            result.className = "result show";
+
+            result.innerHTML = `
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Detecting phishing indicators...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/detect-phishing",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            message: message
+                        })
+                    }
+                );
+
+                const indicators =
+                    Array.isArray(data.indicators)
+                        ? data.indicators.join(", ")
+                        : data.indicators || "None";
+
+                result.innerHTML = `
+
+                    <h4>🎣 Phishing Analysis</h4>
+
+                    ${riskToolsHTML(
+                        data,
+                        "phishing",
+                        "Phishing message analysis"
+                    )}
+
+                    <div class="result-line">
+                        <span>Risk Level</span>
+                        <span>${escapeHTML(data.risk_level)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Indicator Score</span>
+                        <span>${escapeHTML(data.indicator_score)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Indicators</span>
+                        <span>${escapeHTML(indicators)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>AI Analysis</span>
+                        <span>${escapeHTML(data.ai_analysis || "Not available")}</span>
+                    </div>
+
+                `;
+
+            } catch (error) {
+
+                result.innerHTML = `
+                    <div class="high" style="padding:12px;border-radius:9px;">
+                        ❌ ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           PASSWORD
+        ========================================================= */
+
+        function togglePassword() {
+
+            const input =
+                document.getElementById("passwordInput");
+
+            input.type =
+                input.type === "password"
+                    ? "text"
+                    : "password";
+        }
+
+
+        async function checkPassword() {
+
+            const password =
+                document.getElementById("passwordInput")
+                    .value;
+
+            const result =
+                document.getElementById("passwordResult");
+
+            if (!password) {
+                alert("Please enter a password.");
+                return;
+            }
+
+            result.className = "result show";
+
+            result.innerHTML = `
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Checking password strength...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/check-password",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            password: password
+                        })
+                    }
+                );
+
+                const strengthScore =
+                    Math.round(
+                        (Number(data.score) || 0) / 6 * 100
+                    );
+
+                const riskScore =
+                    100 - strengthScore;
+
+                result.innerHTML = `
+
+                    <h4>🔐 Password Strength</h4>
+
+                    ${riskHTML(riskScore)}
+
+                    <div class="result-line">
+                        <span>Strength</span>
+                        <span>${escapeHTML(data.strength)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Strength Score</span>
+                        <span>${strengthScore}/100</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Feedback</span>
+                        <span>${escapeHTML(
+                            Array.isArray(data.feedback)
+                                ? data.feedback.join(", ")
+                                : data.feedback || "Good."
+                        )}</span>
+                    </div>
+
+                    <div style="
+                        margin-top:12px;
+                        color:var(--muted);
+                        font-size:11px;
+                        line-height:1.6;
+                    ">
+                        🔒 Your password is not saved in scan history
+                        and is not sent to the AI assistant.
+                    </div>
+
+                `;
+
+            } catch (error) {
+
+                result.innerHTML = `
+                    <div class="high" style="padding:12px;border-radius:9px;">
+                        ❌ ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           IP / DOMAIN
+        ========================================================= */
+
+        async function lookupIP() {
+
+            const target =
+                document.getElementById("ipInput")
+                    .value.trim();
+
+            const result =
+                document.getElementById("ipResult");
+
+            if (!target) {
+                alert("Please enter an IP or domain.");
+                return;
+            }
+
+            result.className = "result show";
+
+            result.innerHTML = `
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Looking up network information...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/ip-domain-info",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            target: target
+                        })
+                    }
+                );
+
+                result.innerHTML = `
+
+                    <h4>🌐 Network Information</h4>
+
+                    ${riskToolsHTML(
+                        data,
+                        "ip-domain",
+                        target
+                    )}
+
+                    <div class="result-line">
+                        <span>Target</span>
+                        <span>${escapeHTML(data.target)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>IP Address</span>
+                        <span>${escapeHTML(data.ip)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Hostname</span>
+                        <span>${escapeHTML(data.hostname)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Reverse DNS</span>
+                        <span>${escapeHTML(data.reverse_dns)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Network Type</span>
+                        <span>${escapeHTML(data.network_type)}</span>
+                    </div>
+
+                    <div style="
+                        margin-top:12px;
+                        color:var(--muted);
+                        font-size:11px;
+                    ">
+                        ℹ️ DNS information alone cannot prove that a
+                        domain or IP is safe or malicious.
+                    </div>
+
+                `;
+
+            } catch (error) {
+
+                result.innerHTML = `
+                    <div class="high" style="padding:12px;border-radius:9px;">
+                        ❌ ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           EXPLAIN RISK
+        ========================================================= */
+
+        async function explainRisk(
+            source,
+            target,
+            finding
+        ) {
+
+            const box =
+                document.getElementById(
+                    "aiRiskExplanation"
+                );
+
+            if (!box) return;
+
+            box.innerHTML = `
+                <div class="loading" style="margin-top:15px;">
+                    <span class="spinner"></span>
+                    AI is explaining the security risk...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/explain-risk",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            source: source,
+                            target: target,
+                            finding: finding
+                        })
+                    }
+                );
+
+                box.innerHTML = `
+
+                    <div class="alert" style="margin-top:15px;">
+
+                        <div class="alert-title">
+                            💡 Why may this be risky?
+                        </div>
+
+                        <p>
+                            ${escapeHTML(
+                                data.explanation ||
+                                data.reply ||
+                                "No explanation available."
+                            )}
+                        </p>
+
+                    </div>
+                `;
+
+            } catch (error) {
+
+                box.innerHTML = `
+                    <div class="alert" style="margin-top:15px;">
+                        <div class="alert-title">⚠️ Explanation unavailable</div>
+                        <p>${escapeHTML(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           SMART RECOMMENDATIONS
+        ========================================================= */
+
+        async function getRecommendations(
+            source,
+            target,
+            finding
+        ) {
+
+            const box =
+                document.getElementById(
+                    "smartRecommendations"
+                );
+
+            if (!box) return;
+
+            box.innerHTML = `
+                <div class="loading" style="margin-top:15px;">
+                    <span class="spinner"></span>
+                    Preparing security recommendations...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/security-recommendations",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            source: source,
+                            target: target,
+                            finding: finding
+                        })
+                    }
+                );
+
+                const recommendations =
+                    Array.isArray(data.recommendations)
+                        ? data.recommendations
+                        : [];
+
+                box.innerHTML = `
+
+                    <div class="alert" style="margin-top:15px;">
+
+                        <div class="alert-title">
+                            🧠 Smart Security Recommendations
+                        </div>
+
+                        <p style="margin-top:9px;">
+
+                            ${
+                                recommendations.length
+                                    ? recommendations
+                                        .map(
+                                            item =>
+                                                "• " +
+                                                escapeHTML(item)
+                                        )
+                                        .join("<br>")
+                                    : "No recommendations available."
+                            }
+
+                        </p>
+
+                    </div>
+                `;
+
+            } catch (error) {
+
+                box.innerHTML = `
+                    <div class="alert" style="margin-top:15px;">
+                        <div class="alert-title">
+                            ⚠️ Recommendations unavailable
+                        </div>
+                        <p>${escapeHTML(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           SECURITY REPORT
+        ========================================================= */
+
+        let lastReportData = null;
+
+
+        async function generateReport() {
+
+            const findings =
+                document.getElementById("reportInput")
+                    .value.trim();
+
+            const result =
+                document.getElementById("reportResult");
+
+            if (!findings) {
+                alert("Please enter security findings.");
+                return;
+            }
+
+            result.className = "result show";
+
+            result.innerHTML = `
+                <div class="loading">
+                    <span class="spinner"></span>
+                    Generating professional report...
+                </div>
+            `;
+
+            try {
+
+                const data = await safeFetchJSON(
+                    "/api/security-report",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            data: {
+                                findings: findings
+                            }
+                        })
+                    }
+                );
+
+                lastReportData = data;
+
+                result.innerHTML = `
+
+                    <h4>📄 Security Report Generated</h4>
+
+                    <div class="result-line">
+                        <span>Report ID</span>
+                        <span>${escapeHTML(data.report_id)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Created</span>
+                        <span>${escapeHTML(data.created)}</span>
+                    </div>
+
+                    <div class="alert" style="margin-top:15px;">
+                        <div class="alert-title">
+                            Security Report
+                        </div>
+
+                        <p style="
+                            white-space:pre-wrap;
+                            margin-top:8px;
+                        ">
+                            ${escapeHTML(data.report)}
+                        </p>
+                    </div>
+
+                    <div class="button-row">
+
+                        <button
+                            class="btn btn-primary"
+                            onclick="downloadPDFReport()"
+                        >
+                            ⬇️ Download PDF Report
+                        </button>
+
+                        <button
+                            class="btn btn-secondary"
+                            onclick="downloadTXTReport()"
+                        >
+                            📄 Download TXT
+                        </button>
+
+                    </div>
+
+                `;
+
+            } catch (error) {
+
+                result.innerHTML = `
+                    <div class="high" style="padding:12px;border-radius:9px;">
+                        ❌ ${escapeHTML(error.message)}
+                    </div>
+                `;
+            }
+        }
+
+
+        async function downloadPDFReport() {
+
+            if (!lastReportData) {
+                alert("Generate a report first.");
+                return;
+            }
+
+            try {
+
+                const response = await fetch(
+                    "/api/report/pdf",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify({
+                            report: lastReportData
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+
+                    const text = await response.text();
+
+                    throw new Error(
+                        text || "PDF generation failed."
+                    );
+                }
+
+                const blob =
+                    await response.blob();
+
+                const url =
+                    window.URL.createObjectURL(blob);
+
+                const a =
+                    document.createElement("a");
+
+                a.href = url;
+
+                a.download =
+                    "cyber-security-report.pdf";
+
+                document.body.appendChild(a);
+
+                a.click();
+
+                a.remove();
+
+                window.URL.revokeObjectURL(url);
+
+            } catch (error) {
+
+                alert(error.message);
+            }
+        }
+
+
+        function downloadTXTReport() {
+
+            if (!lastReportData) {
+                alert("Generate a report first.");
+                return;
+            }
+
+            const text =
+                "CYBER SECURITY AI REPORT\n\n" +
+                "Report ID: " +
+                (lastReportData.report_id || "") +
+                "\nCreated: " +
+                (lastReportData.created || "") +
+                "\n\n" +
+                (lastReportData.report || "");
+
+            const blob =
+                new Blob(
+                    [text],
+                    {
+                        type: "text/plain"
+                    }
+                );
+
+            const url =
+                URL.createObjectURL(blob);
+
+            const a =
+                document.createElement("a");
+
+            a.href = url;
+
+            a.download =
+                "cyber-security-report.txt";
+
+            a.click();
+
+            URL.revokeObjectURL(url);
+        }
+
+
+        /* =========================================================
+           THREAT ALERTS
+        ========================================================= */
+
+        async function loadThreatAlerts() {
+
+            const container =
+                document.getElementById(
+                    "alertsContainer"
+                );
+
+            try {
+
+                const data =
+                    await safeFetchJSON(
+                        "/api/threat-alerts"
+                    );
+
+                document.getElementById(
+                    "alertsUpdated"
+                ).textContent =
+                    "Updated: " +
+                    (data.updated || "Recently");
+
+                const alerts =
+                    data.alerts || [];
+
+                if (!alerts.length) {
+
+                    container.innerHTML = `
+                        <div class="empty">
+                            No alerts available.
+                        </div>
+                    `;
+
+                    return;
+                }
+
+                container.innerHTML =
+                    alerts.map(alert => `
+
+                        <div class="alert">
+
+                            <div class="alert-title">
+                                🚨 ${escapeHTML(
+                                    alert.title || "Security Alert"
+                                )}
+                            </div>
+
+                            <p>
+                                ${escapeHTML(
+                                    alert.description ||
+                                    alert.message ||
+                                    ""
+                                )}
+                            </p>
+
+                        </div>
+
+                    `).join("");
+
+            } catch (error) {
+
+                container.innerHTML = `
+                    <div class="alert">
+                        <div class="alert-title">
+                            ⚠️ Unable to load alerts
+                        </div>
+
+                        <p>
+                            ${escapeHTML(error.message)}
+                        </p>
+                    </div>
+                `;
+            }
+        }
+
+
+        /* =========================================================
+           HISTORY
+        ========================================================= */
+
+        async function loadHistory() {
+
+            const body =
+                document.getElementById(
+                    "historyBody"
+                );
+
+            body.innerHTML = `
+                <tr>
+                    <td colspan="5">
+                        <div class="loading">
+                            <span class="spinner"></span>
+                            Loading history...
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            try {
+
+                const data =
+                    await safeFetchJSON(
+                        "/api/history"
+                    );
+
+                const history =
+                    data.history || [];
+
+                if (!history.length) {
+
+                    body.innerHTML = `
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty">
+                                    No scan history available.
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+
+                    return;
+                }
+
+                body.innerHTML =
+                    history.map(item => {
+
+                        const score =
+                            Number(item.risk_score) || 0;
+
+                        const cls =
+                            getRiskClass(score);
+
+                        return `
+
+                            <tr>
+
+                                <td>
+                                    ${escapeHTML(
+                                        item.timestamp || "-"
+                                    )}
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(
+                                        item.type || "-"
+                                    )}
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(
+                                        item.target || "-"
+                                    )}
+                                </td>
+
+                                <td>
+                                    <span class="badge ${cls}">
+                                        ${score}/100
+                                    </span>
+                                </td>
+
+                                <td>
+                                    ${escapeHTML(
+                                        item.status || "-"
+                                    )}
+                                </td>
+
+                            </tr>
+
+                        `;
+
+                    }).join("");
+
+            } catch (error) {
+
+                body.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty">
+                                ${escapeHTML(error.message)}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+
+        async function clearHistory() {
+
+            if (
+                !confirm(
+                    "Are you sure you want to clear scan history?"
+                )
+            ) {
+                return;
+            }
+
+            try {
+
+                await safeFetchJSON(
+                    "/api/history/clear",
+                    {
+                        method: "POST"
+                    }
+                );
+
+                loadHistory();
+
+                loadDashboard();
+
+            } catch (error) {
+
+                alert(error.message);
+            }
+        }
+
+
+        /* =========================================================
+           DASHBOARD
+        ========================================================= */
+
+        async function loadDashboard() {
+
+            try {
+
+                const data =
+                    await safeFetchJSON(
+                        "/api/security-dashboard"
+                    );
+
+                document.getElementById(
+                    "totalScans"
+                ).textContent =
+                    data.total_scans ??
+                    data.totalScans ??
+                    0;
+
+                document.getElementById(
+                    "highRisks"
+                ).textContent =
+                    data.high_risk ??
+                    data.highRisks ??
+                    0;
+
+                document.getElementById(
+                    "avgRisk"
+                ).textContent =
+                    data.average_risk ??
+                    data.avgRisk ??
+                    0;
+
+                const recent =
+                    data.recent_scans ||
+                    data.recent ||
+                    [];
+
+                const recentBox =
+                    document.getElementById(
+                        "recentScans"
+                    );
+
+                if (!recent.length) {
+
+                    recentBox.innerHTML = `
+                        <div class="empty">
+                            No recent scans.
+                        </div>
+                    `;
+
+                } else {
+
+                    recentBox.innerHTML =
+                        recent.slice(0, 6)
+                            .map(item => {
+
+                                const score =
+                                    Number(
+                                        item.risk_score
+                                    ) || 0;
+
+                                const cls =
+                                    getRiskClass(score);
+
+                                return `
+
+                                    <div class="alert">
+
+                                        <div style="
+                                            display:flex;
+                                            justify-content:space-between;
+                                            gap:10px;
+                                        ">
+
+                                            <div>
+
+                                                <div class="alert-title">
+                                                    ${escapeHTML(
+                                                        item.type || "Scan"
+                                                    )}
+                                                </div>
+
+                                                <p>
+                                                    ${escapeHTML(
+                                                        item.target || "-"
+                                                    )}
+                                                </p>
+
+                                            </div>
+
+                                            <span class="badge ${cls}">
+                                                ${score}
+                                            </span>
+
+                                        </div>
+
+                                    </div>
+
+                                `;
+
+                            }).join("");
+                }
+
+                if (Array.isArray(data.security_tips)) {
+
+                    document.getElementById(
+                        "securityTips"
+                    ).innerHTML =
+                        data.security_tips
+                            .map(tip => `
+
+                                <div class="alert">
+                                    <div class="alert-title">
+                                        🛡️ Security Tip
+                                    </div>
+
+                                    <p>
+                                        ${escapeHTML(tip)}
+                                    </p>
+                                </div>
+
+                            `).join("");
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "Dashboard error:",
+                    error
+                );
+            }
+        }
+
+
+        /* =========================================================
+           STARTUP
+        ========================================================= */
+
+        window.addEventListener(
+            "DOMContentLoaded",
+            () => {
+
+                loadTheme();
+
+                console.log(
+                    "Cyber Security AI frontend loaded."
+                );
+
+            }
+        );
+
+    </script>
+
+</body>
+</html>

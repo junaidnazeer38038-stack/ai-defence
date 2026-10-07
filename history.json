@@ -1,0 +1,40 @@
+[
+  {
+    "id": "8b787fc67796",
+    "type": "URL Scan",
+    "target": "https://iplogger.com/2hLkD9",
+    "risk_score": 10,
+    "risk_level": "Low",
+    "summary": "URL safety analysis",
+    "result": {
+      "status": "low-risk",
+      "url": "https://iplogger.com/2hLkD9",
+      "domain": "iplogger.com",
+      "protocol": "https",
+      "warnings": [],
+      "message": "No basic suspicious indicators were detected.",
+      "risk_score": 10,
+      "risk_level": "Low"
+    },
+    "timestamp": "2026-10-06 04:18:28"
+  },
+  {
+    "id": "c52eed26cbbb",
+    "type": "URL Scan",
+    "target": "https://console.groq.com/keys?utm_source=chatgpt.com",
+    "risk_score": 10,
+    "risk_level": "Low",
+    "summary": "URL safety analysis",
+    "result": {
+      "status": "low-risk",
+      "url": "https://console.groq.com/keys?utm_source=chatgpt.com",
+      "domain": "console.groq.com",
+      "protocol": "https",
+      "warnings": [],
+      "message": "No basic suspicious indicators were detected.",
+      "risk_score": 10,
+      "risk_level": "Low"
+    },
+    "timestamp": "2026-10-06 04:08:45"
+  }
+]
