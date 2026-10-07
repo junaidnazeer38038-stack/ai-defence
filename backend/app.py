@@ -3,7 +3,10 @@ from flask_cors import CORS
 from google import genai
 from groq import Groq
 from dotenv import load_dotenv
-from backend.url_scanner import scan_url
+try:
+    from backend.url_scanner import scan_url
+except ImportError:
+    from url_scanner import scan_url
 
 import os
 import hashlib
