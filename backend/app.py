@@ -3,7 +3,7 @@ from flask_cors import CORS
 from google import genai
 from groq import Groq
 from dotenv import load_dotenv
-from backend.url_scanner import scan_url
+from url_scanner import scan_url
 
 import os
 import hashlib
@@ -13,33 +13,23 @@ import ipaddress
 import json
 import io
 import uuid
+import urllib.request
+import urllib.parse
 from datetime import datetime
 
 
 # ============================================================
-# ENVIRONMENT
+# LOAD ENVIRONMENT
 # ============================================================
 
 load_dotenv()
-
-
-# ============================================================
-# PATHS
-# ============================================================
 
 BASE_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")
 )
 
-FRONTEND_FOLDER = os.path.join(
-    BASE_DIR,
-    "frontend"
-)
-
-HISTORY_FILE = os.path.join(
-    BASE_DIR,
-    "history.json"
-)
+FRONTEND_FOLDER = os.path.join(BASE_DIR, "frontend")
+HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 
 
 # ============================================================
@@ -57,7 +47,94 @@ app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
 
 
 # ============================================================
-# API KEYS
+# SUPABASE
+# ============================================================
+
+SUPABASE_URL = os.getenv(
+    "SUPABASE_URL",
+    ""
+).strip().rstrip("/")
+
+SUPABASE_KEY = os.getenv(
+    "SUPABASE_KEY",
+    ""
+).strip()
+
+
+def supabase_enabled():
+    return bool(
+        SUPABASE_URL and
+        SUPABASE_KEY
+    )
+
+
+def supabase_headers():
+    return {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+
+def supabase_request(
+    method,
+    endpoint,
+    data=None
+):
+    if not supabase_enabled():
+        return None
+
+    url = (
+        SUPABASE_URL +
+        "/rest/v1/" +
+        endpoint
+    )
+
+    body = None
+
+    if data is not None:
+        body = json.dumps(data).encode("utf-8")
+
+    req = urllib.request.Request(
+        url,
+        data=body,
+        method=method
+    )
+
+    for key, value in supabase_headers().items():
+        req.add_header(key, value)
+
+    if method == "POST":
+        req.add_header(
+            "Prefer",
+            "return=minimal"
+        )
+
+    try:
+        with urllib.request.urlopen(
+            req,
+            timeout=15
+        ) as response:
+
+            raw = response.read().decode(
+                "utf-8"
+            )
+
+            if not raw:
+                return []
+
+            return json.loads(raw)
+
+    except Exception as e:
+        print(
+            "Supabase error:",
+            e
+        )
+        return None
+
+
+# ============================================================
+# AI KEYS
 # ============================================================
 
 GEMINI_API_KEYS = [
@@ -84,13 +161,17 @@ GROQ_API_KEY = os.getenv(
 gemini_clients = []
 
 for key in GEMINI_API_KEYS:
+
     try:
+
         gemini_clients.append(
             genai.Client(
                 api_key=key
             )
         )
+
     except Exception as e:
+
         print(
             "Gemini client error:",
             e
@@ -100,11 +181,15 @@ for key in GEMINI_API_KEYS:
 groq_client = None
 
 if GROQ_API_KEY:
+
     try:
+
         groq_client = Groq(
             api_key=GROQ_API_KEY
         )
+
     except Exception as e:
+
         print(
             "Groq client error:",
             e
@@ -116,11 +201,12 @@ if GROQ_API_KEY:
 # ============================================================
 
 GEMINI_MODEL = "gemini-3.8-flash"
+
 GROQ_MODEL = "openai/gpt-oss-20b"
 
 
 # ============================================================
-# SECURITY SYSTEM PROMPT
+# SYSTEM PROMPT
 # ============================================================
 
 SYSTEM_PROMPT = """
@@ -170,7 +256,7 @@ When explaining a security issue:
 
 
 # ============================================================
-# USER HISTORY
+# USER ID
 # ============================================================
 
 def get_user_id():
@@ -180,6 +266,7 @@ def get_user_id():
     )
 
     if not user_id:
+
         user_id = str(
             uuid.uuid4()
         )
@@ -188,6 +275,10 @@ def get_user_id():
 
     return user_id
 
+
+# ============================================================
+# LOCAL HISTORY FALLBACK
+# ============================================================
 
 def load_all_history():
 
@@ -224,7 +315,7 @@ def load_all_history():
         return {}
 
 
-def load_history():
+def local_load_history():
 
     user_id = get_user_id()
 
@@ -244,13 +335,14 @@ def load_history():
     return []
 
 
-def save_history_entry(entry):
+def local_save_history(entry):
 
     user_id = get_user_id()
 
     all_history = load_all_history()
 
     if user_id not in all_history:
+
         all_history[user_id] = []
 
     all_history[user_id].insert(
@@ -258,7 +350,6 @@ def save_history_entry(entry):
         entry
     )
 
-    # Maximum 100 scans per browser
     all_history[user_id] = (
         all_history[user_id][:100]
     )
@@ -290,7 +381,7 @@ def save_history_entry(entry):
         return False
 
 
-def clear_history():
+def local_clear_history():
 
     user_id = get_user_id()
 
@@ -324,6 +415,125 @@ def clear_history():
 
         return False
 
+
+# ============================================================
+# DATABASE HISTORY
+# ============================================================
+
+def load_history():
+
+    user_id = get_user_id()
+
+    if not supabase_enabled():
+
+        return local_load_history()
+
+    encoded_user = urllib.parse.quote(
+        user_id,
+        safe=""
+    )
+
+    endpoint = (
+        "scan_history"
+        f"?user_id=eq.{encoded_user}"
+        "&select=entry,created_at"
+        "&order=created_at.desc"
+        "&limit=100"
+    )
+
+    result = supabase_request(
+        "GET",
+        endpoint
+    )
+
+    if result is None:
+
+        return local_load_history()
+
+    history = []
+
+    for row in result:
+
+        entry = row.get(
+            "entry"
+        )
+
+        if isinstance(
+            entry,
+            dict
+        ):
+            history.append(entry)
+
+    return history
+
+
+def save_history_entry(entry):
+
+    user_id = get_user_id()
+
+    if not supabase_enabled():
+
+        return local_save_history(
+            entry
+        )
+
+    data = {
+        "user_id": user_id,
+        "entry": entry
+    }
+
+    result = supabase_request(
+        "POST",
+        "scan_history",
+        data
+    )
+
+    if result is None:
+
+        print(
+            "Supabase save failed."
+        )
+
+        return local_save_history(
+            entry
+        )
+
+    return True
+
+
+def clear_history():
+
+    user_id = get_user_id()
+
+    if not supabase_enabled():
+
+        return local_clear_history()
+
+    encoded_user = urllib.parse.quote(
+        user_id,
+        safe=""
+    )
+
+    endpoint = (
+        "scan_history"
+        f"?user_id=eq.{encoded_user}"
+    )
+
+    result = supabase_request(
+        "DELETE",
+        endpoint
+    )
+
+    if result is None:
+
+        return local_clear_history()
+
+    return True
+
+
+# ============================================================
+# COOKIE
+# ============================================================
 
 @app.after_request
 def set_user_cookie(response):
@@ -362,8 +572,11 @@ def now():
 def clamp_score(score):
 
     try:
+
         score = int(score)
+
     except Exception:
+
         score = 0
 
     return max(
@@ -395,7 +608,9 @@ def risk_level(score):
 
 def get_status(score):
 
-    score = clamp_score(score)
+    score = clamp_score(
+        score
+    )
 
     if score >= 80:
         return "Critical Risk"
@@ -460,7 +675,7 @@ def add_history(
 
 
 # ============================================================
-# GEMINI
+# AI
 # ============================================================
 
 def ask_gemini(prompt):
@@ -474,9 +689,9 @@ def ask_gemini(prompt):
         return None
 
     full_prompt = (
-        SYSTEM_PROMPT
-        + "\n\nUser request:\n"
-        + prompt
+        SYSTEM_PROMPT +
+        "\n\nUser request:\n" +
+        prompt
     )
 
     for index, client in enumerate(
@@ -486,9 +701,11 @@ def ask_gemini(prompt):
 
         try:
 
-            response = client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=full_prompt
+            response = (
+                client.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=full_prompt
+                )
             )
 
             answer = getattr(
@@ -514,10 +731,6 @@ def ask_gemini(prompt):
 
     return None
 
-
-# ============================================================
-# GROQ
-# ============================================================
 
 def ask_groq(prompt):
 
@@ -552,6 +765,7 @@ def ask_groq(prompt):
         )
 
         if not response.choices:
+
             return None
 
         answer = (
@@ -579,35 +793,23 @@ def ask_groq(prompt):
     return None
 
 
-# ============================================================
-# AI FALLBACK
-# ============================================================
-
 def ask_ai(prompt):
 
-    # Groq first
     answer = ask_groq(
         prompt
     )
 
     if answer:
 
-        return (
-            answer,
-            "Groq"
-        )
+        return answer, "Groq"
 
-    # Gemini second
     answer = ask_gemini(
         prompt
     )
 
     if answer:
 
-        return (
-            answer,
-            "Gemini"
-        )
+        return answer, "Gemini"
 
     return (
         "AI service is temporarily unavailable. Please try again.",
@@ -645,40 +847,63 @@ def frontend_files(path):
     "/api/status",
     methods=["GET"]
 )
-def status():
+def api_status():
 
     return jsonify({
 
+        "success": True,
+
         "status": "online",
 
-        "service":
-            "Cyber Security AI",
+        "ai": {
 
-        "ai_available":
-            bool(
-                gemini_clients
-                or groq_client
-            ),
-
-        "gemini_available":
-            bool(
+            "gemini": bool(
                 gemini_clients
             ),
 
-        "groq_available":
-            bool(
+            "groq": bool(
                 groq_client
-            ),
+            )
 
-        "features": 9,
+        },
 
-        "time":
-            now()
+        "database": (
+            "Supabase"
+            if supabase_enabled()
+            else "Local"
+        ),
+
+        "features": {
+
+            "chat": True,
+
+            "url_scanner": True,
+
+            "file_scanner": True,
+
+            "phishing_detector": True,
+
+            "password_checker": True,
+
+            "ip_domain_info": True,
+
+            "security_report": True,
+
+            "threat_alerts": True,
+
+            "dashboard": True,
+
+            "history": True
+
+        },
+
+        "time": now()
+
     })
 
 
 # ============================================================
-# 1. AI CHAT
+# AI CHAT
 # ============================================================
 
 @app.route(
@@ -704,10 +929,7 @@ def chat():
 
             return jsonify({
                 "success": False,
-                "reply":
-                    "Please enter a message.",
-                "provider":
-                    "System"
+                "error": "Message is required."
             }), 400
 
         answer, provider = ask_ai(
@@ -718,11 +940,12 @@ def chat():
 
             "success": True,
 
-            "reply":
-                answer,
+            "answer": answer,
 
-            "provider":
-                provider
+            "response": answer,
+
+            "provider": provider
+
         })
 
     except Exception as e:
@@ -736,17 +959,13 @@ def chat():
 
             "success": False,
 
-            "reply":
-                "Unable to process the request.",
-
-            "provider":
-                "System"
+            "error": "Unable to process your request."
 
         }), 500
 
 
 # ============================================================
-# 2. URL SCANNER
+# URL SCANNER
 # ============================================================
 
 @app.route(
@@ -772,8 +991,7 @@ def scan_url_api():
 
             return jsonify({
                 "success": False,
-                "error":
-                    "Please enter a URL."
+                "error": "URL is required."
             }), 400
 
         result = scan_url(
@@ -784,90 +1002,48 @@ def scan_url_api():
             result,
             dict
         ):
-
             result = {
-                "result":
-                    str(result)
+                "message": str(
+                    result
+                )
             }
 
         score = result.get(
-            "risk_score"
+            "risk_score",
+            result.get(
+                "score",
+                0
+            )
         )
-
-        if score is None:
-
-            status_value = str(
-                result.get(
-                    "status",
-                    ""
-                )
-            ).lower()
-
-            suspicious = str(
-                result.get(
-                    "suspicious",
-                    ""
-                )
-            ).lower()
-
-            score = 10
-
-            if (
-                "malicious" in status_value
-                or
-                "danger" in status_value
-                or
-                suspicious == "true"
-            ):
-
-                score = 85
-
-            elif (
-                "suspicious" in status_value
-                or
-                "warning" in status_value
-            ):
-
-                score = 60
 
         score = clamp_score(
             score
         )
 
-        result["risk_score"] = score
+        entry = add_history(
+            "URL Scan",
+            url,
+            score,
+            result,
+            "URL security analysis completed."
+        )
 
+        result["risk_score"] = score
         result["risk_level"] = risk_level(
             score
         )
-
-        history_entry = add_history(
-
-            "URL Scan",
-
-            url,
-
-            score,
-
-            result,
-
-            "URL safety analysis"
+        result["status"] = get_status(
+            score
         )
 
         return jsonify({
 
             "success": True,
 
-            "result":
-                result,
+            "result": result,
 
-            "risk_score":
-                score,
+            "history_entry": entry
 
-            "risk_level":
-                risk_level(score),
-
-            "history_id":
-                history_entry["id"]
         })
 
     except Exception as e:
@@ -881,14 +1057,13 @@ def scan_url_api():
 
             "success": False,
 
-            "error":
-                "Unable to scan the URL."
+            "error": str(e)
 
         }), 500
 
 
 # ============================================================
-# 3. FILE SCANNER
+# FILE SCANNER
 # ============================================================
 
 @app.route(
@@ -899,156 +1074,178 @@ def scan_file():
 
     try:
 
-        if "file" not in request.files:
-
-            return jsonify({
-
-                "success": False,
-
-                "error":
-                    "No file uploaded."
-
-            }), 400
-
-        file = request.files[
+        uploaded = request.files.get(
             "file"
-        ]
+        )
 
-        if not file.filename:
+        if not uploaded:
 
             return jsonify({
-
                 "success": False,
-
-                "error":
-                    "Please select a file."
-
+                "error": "Please select a file."
             }), 400
 
-        filename = file.filename
+        filename = uploaded.filename or "unknown"
 
-        content = file.read()
+        filename_lower = filename.lower()
+
+        file_data = uploaded.read()
 
         file_size = len(
-            content
+            file_data
         )
 
         sha256_hash = hashlib.sha256(
-            content
+            file_data
+        ).hexdigest()
+
+        md5_hash = hashlib.md5(
+            file_data
         ).hexdigest()
 
         extension = os.path.splitext(
-            filename
+            filename_lower
         )[1].lower()
 
         dangerous_extensions = {
 
             ".exe",
+            ".scr",
             ".bat",
             ".cmd",
-            ".scr",
+            ".com",
             ".msi",
-            ".vbs",
-            ".js",
+            ".dll",
             ".ps1",
+            ".vbs",
+            ".vbe",
+            ".js",
+            ".jse",
+            ".wsf",
+            ".wsh",
+            ".hta",
             ".jar",
-            ".dll"
+            ".apk"
+
         }
 
-        suspicious_extension = (
-            extension
-            in dangerous_extensions
-        )
+        suspicious_extensions = {
 
-        score = (
-            65
-            if suspicious_extension
-            else 5
+            ".zip",
+            ".rar",
+            ".7z",
+            ".iso",
+            ".img",
+            ".docm",
+            ".xlsm",
+            ".pptm"
+
+        }
+
+        score = 0
+
+        indicators = []
+
+        if extension in dangerous_extensions:
+
+            score += 70
+
+            indicators.append(
+                "Potentially executable or script-based file type."
+            )
+
+        elif extension in suspicious_extensions:
+
+            score += 35
+
+            indicators.append(
+                "Archive or macro-enabled file type requires caution."
+            )
+
+        else:
+
+            indicators.append(
+                "No dangerous file extension detected."
+            )
+
+        if file_size == 0:
+
+            score += 15
+
+            indicators.append(
+                "File is empty."
+            )
+
+        if file_size > 100 * 1024 * 1024:
+
+            score += 10
+
+            indicators.append(
+                "File is unusually large."
+            )
+
+        score = clamp_score(
+            score
         )
 
         result = {
 
-            "filename":
-                filename,
+            "file_name": filename,
 
-            "extension":
-                extension or "none",
+            "file_size": file_size,
 
-            "size_bytes":
-                file_size,
+            "file_size_kb": round(
+                file_size / 1024,
+                2
+            ),
 
-            "sha256":
-                sha256_hash,
+            "extension": (
+                extension
+                if extension
+                else "No extension"
+            ),
 
-            "suspicious_extension":
-                suspicious_extension,
+            "sha256": sha256_hash,
 
-            "risk_score":
-                score,
+            "md5": md5_hash,
 
-            "risk_level":
-                risk_level(score),
+            "mime_type": (
+                uploaded.mimetype
+                or "Unknown"
+            ),
 
-            "message": (
+            "risk_score": score,
 
-                "Potentially risky file type. "
-                "Do not open it unless you trust the source."
+            "risk_level": risk_level(
+                score
+            ),
 
-                if suspicious_extension
+            "status": get_status(
+                score
+            ),
 
-                else
+            "indicators": indicators,
 
-                "No obvious file-type warning was detected."
-            )
+            "safe": score < 30
+
         }
 
-        # Only metadata/hash is saved.
-        history_result = {
-
-            "filename":
-                filename,
-
-            "extension":
-                extension or "none",
-
-            "size_bytes":
-                file_size,
-
-            "sha256":
-                sha256_hash,
-
-            "suspicious_extension":
-                suspicious_extension
-        }
-
-        history_entry = add_history(
-
+        entry = add_history(
             "File Scan",
-
             filename,
-
             score,
-
-            history_result,
-
-            "File metadata and hash analysis"
+            result,
+            "File security analysis completed."
         )
 
         return jsonify({
 
             "success": True,
 
-            "result":
-                result,
+            "result": result,
 
-            "risk_score":
-                score,
+            "history_entry": entry
 
-            "risk_level":
-                risk_level(score),
-
-            "history_id":
-                history_entry["id"]
         })
 
     except Exception as e:
@@ -1062,14 +1259,13 @@ def scan_file():
 
             "success": False,
 
-            "error":
-                "Unable to scan the file."
+            "error": "Unable to scan file."
 
         }), 500
 
 
 # ============================================================
-# 4. PHISHING DETECTOR
+# PHISHING DETECTOR
 # ============================================================
 
 @app.route(
@@ -1086,9 +1282,9 @@ def detect_phishing():
 
         text = str(
             data.get(
-                "message",
+                "text",
                 data.get(
-                    "text",
+                    "url",
                     ""
                 )
             )
@@ -1097,138 +1293,136 @@ def detect_phishing():
         if not text:
 
             return jsonify({
-
                 "success": False,
-
-                "error":
-                    "Please enter a message or email."
-
+                "error": "URL or text is required."
             }), 400
 
-        text_lower = text.lower()
+        lower_text = text.lower()
+
+        score = 0
 
         indicators = []
 
         phishing_words = [
 
-            "urgent",
             "verify your account",
             "verify account",
+            "urgent action",
+            "login immediately",
+            "confirm password",
+            "reset password",
+            "account suspended",
+            "account locked",
             "click here",
-            "password",
-            "login",
-            "suspended",
+            "security alert",
+            "claim reward",
+            "free gift",
             "winner",
-            "prize",
-            "bank",
-            "otp",
-            "confirm your account",
-            "limited time",
-            "security alert"
+            "payment failed"
+
         ]
 
         for word in phishing_words:
 
-            if word in text_lower:
+            if word in lower_text:
+
+                score += 12
 
                 indicators.append(
-                    word
+                    f"Suspicious phrase detected: {word}"
                 )
 
-        # Correct URL detection
-        url_matches = re.findall(
-            r"https?://[^\s]+|www\.[^\s]+",
+        url_pattern = (
+            r"https?://[^\s]+"
+            r"|www\.[^\s]+"
+        )
+
+        urls = re.findall(
+            url_pattern,
             text,
-            flags=re.IGNORECASE
+            re.IGNORECASE
         )
 
-        score = min(
+        if urls:
 
-            95,
+            for url in urls:
 
-            (
-                len(indicators)
-                * 10
-            )
-            +
-            (
-                len(url_matches)
-                * 20
-            )
+                if "@" in url:
+
+                    score += 20
+
+                    indicators.append(
+                        "URL contains an @ symbol."
+                    )
+
+                if len(url) > 100:
+
+                    score += 10
+
+                    indicators.append(
+                        "URL is unusually long."
+                    )
+
+        score = clamp_score(
+            score
         )
 
-        if len(indicators) >= 4:
+        if score >= 60:
 
-            score = max(
-                score,
-                70
-            )
+            verdict = "Likely Phishing"
+
+        elif score >= 30:
+
+            verdict = "Suspicious"
+
+        else:
+
+            verdict = "Low Risk"
 
         result = {
 
-            "risk_score":
-                score,
+            "input": text,
 
-            "risk_level":
-                risk_level(score),
+            "verdict": verdict,
 
-            "phishing_indicators":
-                indicators,
+            "risk_score": score,
 
-            "urls_found":
-                url_matches,
+            "risk_level": risk_level(
+                score
+            ),
 
-            "indicator_count":
-                len(indicators),
+            "status": get_status(
+                score
+            ),
 
-            "recommendation": (
+            "indicators": indicators,
 
-                "Do not click links or provide credentials. "
-                "Verify the sender using an official channel."
+            "urls_found": urls
 
-                if score >= 50
-
-                else
-
-                "No strong phishing pattern was detected, "
-                "but remain cautious."
-            )
         }
 
-        history_entry = add_history(
-
+        entry = add_history(
             "Phishing Detection",
-
-            "Message Analysis",
-
+            text[:200],
             score,
-
             result,
-
-            "Phishing indicator analysis"
+            verdict
         )
 
         return jsonify({
 
             "success": True,
 
-            "result":
-                result,
+            "result": result,
 
-            "risk_score":
-                score,
+            "history_entry": entry
 
-            "risk_level":
-                risk_level(score),
-
-            "history_id":
-                history_entry["id"]
         })
 
     except Exception as e:
 
         print(
-            "Phishing detection error:",
+            "Phishing error:",
             e
         )
 
@@ -1236,14 +1430,13 @@ def detect_phishing():
 
             "success": False,
 
-            "error":
-                "Unable to analyze the message."
+            "error": "Unable to analyze input."
 
         }), 500
 
 
 # ============================================================
-# 5. PASSWORD CHECKER
+# PASSWORD CHECKER
 # ============================================================
 
 @app.route(
@@ -1268,173 +1461,145 @@ def check_password():
         if not password:
 
             return jsonify({
-
                 "success": False,
-
-                "error":
-                    "Please enter a password."
-
+                "error": "Password is required."
             }), 400
 
-        common_passwords = {
+        score = 0
 
-            "password",
-            "123456",
-            "12345678",
-            "qwerty",
-            "admin",
-            "password123",
-            "123456789"
-        }
+        checks = []
 
-        checks = {
+        if len(password) >= 8:
 
-            "length_8_plus":
-                len(password) >= 8,
+            score += 20
 
-            "length_12_plus":
-                len(password) >= 12,
+            checks.append(
+                "Good length."
+            )
 
-            "uppercase":
-                bool(
-                    re.search(
-                        r"[A-Z]",
-                        password
-                    )
-                ),
+        else:
 
-            "lowercase":
-                bool(
-                    re.search(
-                        r"[a-z]",
-                        password
-                    )
-                ),
+            checks.append(
+                "Use at least 8 characters."
+            )
 
-            "number":
-                bool(
-                    re.search(
-                        r"\d",
-                        password
-                    )
-                ),
+        if len(password) >= 12:
 
-            "special":
-                bool(
-                    re.search(
-                        r"[^A-Za-z0-9]",
-                        password
-                    )
-                ),
+            score += 15
 
-            "common_password":
-                password.lower()
-                in common_passwords
-        }
+        if re.search(
+            r"[A-Z]",
+            password
+        ):
 
-        points = 0
+            score += 15
 
-        for key in [
+            checks.append(
+                "Contains uppercase letters."
+            )
 
-            "length_8_plus",
-            "length_12_plus",
-            "uppercase",
-            "lowercase",
-            "number",
-            "special"
+        else:
 
-        ]:
+            checks.append(
+                "Add uppercase letters."
+            )
 
-            if checks[key]:
-                points += 1
+        if re.search(
+            r"[a-z]",
+            password
+        ):
 
-        if checks[
-            "common_password"
-        ]:
+            score += 15
 
-            points = 0
+        if re.search(
+            r"\d",
+            password
+        ):
 
-        security_score = round(
+            score += 15
 
-            (
-                points / 6
-            ) * 100
+            checks.append(
+                "Contains numbers."
+            )
+
+        else:
+
+            checks.append(
+                "Add numbers."
+            )
+
+        if re.search(
+            r"[^A-Za-z0-9]",
+            password
+        ):
+
+            score += 20
+
+            checks.append(
+                "Contains special characters."
+            )
+
+        else:
+
+            checks.append(
+                "Add special characters."
+            )
+
+        score = clamp_score(
+            score
         )
 
-        if checks[
-            "common_password"
-        ]:
+        if score >= 80:
 
-            security_score = 5
+            strength = "Very Strong"
 
-        risk_score = (
-            100
-            - security_score
-        )
+        elif score >= 60:
 
+            strength = "Strong"
+
+        elif score >= 40:
+
+            strength = "Medium"
+
+        else:
+
+            strength = "Weak"
+
+        # Password is intentionally NOT saved.
         result = {
 
-            "length":
-                len(password),
+            "score": score,
 
-            "checks":
-                checks,
+            "risk_score": 100 - score,
 
-            "strength_points":
-                points,
+            "strength": strength,
 
-            "risk_score":
-                risk_score,
+            "checks": checks,
 
-            "security_score":
-                security_score,
+            "recommendations": [
 
-            "risk_level":
-                risk_level(
-                    risk_score
-                ),
+                "Use a long unique password.",
+                "Avoid names and birthdays.",
+                "Do not reuse passwords.",
+                "Use a password manager.",
+                "Enable multi-factor authentication."
 
-            "message": (
+            ]
 
-                "Use a longer, unique password "
-                "with multiple character types."
-
-                if security_score < 70
-
-                else
-
-                "Password has a stronger structure. "
-                "Use a unique password for every account."
-            )
         }
-
-        # IMPORTANT:
-        # Passwords are NEVER saved in history.
-        # No actual password or password metadata is stored.
 
         return jsonify({
 
             "success": True,
 
-            "result":
-                result,
+            "result": result
 
-            "risk_score":
-                risk_score,
-
-            "risk_level":
-                risk_level(
-                    risk_score
-                ),
-
-            "security_score":
-                security_score
         })
 
     except Exception as e:
 
         print(
-            "Password checker error:",
+            "Password error:",
             e
         )
 
@@ -1442,14 +1607,13 @@ def check_password():
 
             "success": False,
 
-            "error":
-                "Unable to check the password."
+            "error": "Unable to check password."
 
         }), 500
 
 
 # ============================================================
-# 6. IP / DOMAIN INFO
+# IP / DOMAIN INFO
 # ============================================================
 
 @app.route(
@@ -1467,7 +1631,13 @@ def ip_domain_info():
         target = str(
             data.get(
                 "target",
-                ""
+                data.get(
+                    "domain",
+                    data.get(
+                        "ip",
+                        ""
+                    )
+                )
             )
         ).strip()
 
@@ -1477,41 +1647,48 @@ def ip_domain_info():
 
                 "success": False,
 
-                "error":
-                    "Please enter an IP address or domain."
+                "error": "IP address or domain is required."
 
             }), 400
 
+        target_clean = target
+
         target_clean = re.sub(
-
             r"^https?://",
-
             "",
-
-            target,
-
+            target_clean,
             flags=re.IGNORECASE
         )
 
-        target_clean = (
-            target_clean
-            .split("/")[0]
-            .split(":")[0]
-        )
+        target_clean = target_clean.split(
+            "/"
+        )[0]
 
-        info = {
+        target_clean = target_clean.split(
+            ":"
+        )[0]
 
-            "target":
-                target,
+        hostname = ""
 
-            "normalized_target":
-                target_clean,
+        reverse_dns = ""
 
-            "timestamp":
-                now()
-        }
+        ip_address = ""
 
-        score = 10
+        network_type = ""
+
+        address_type = ""
+
+        ip_version = ""
+
+        is_private = False
+
+        is_loopback = False
+
+        is_reserved = False
+
+        # ----------------------------------------------------
+        # IP INPUT
+        # ----------------------------------------------------
 
         try:
 
@@ -1519,90 +1696,233 @@ def ip_domain_info():
                 target_clean
             )
 
-            info["type"] = "IP Address"
+            ip_address = str(
+                ip_obj
+            )
 
-            info["ip_version"] = ip_obj.version
+            hostname = socket.getfqdn(
+                ip_address
+            )
 
-            info["is_private"] = ip_obj.is_private
+            if hostname == ip_address:
 
-            info["is_global"] = ip_obj.is_global
-
-            info["is_loopback"] = ip_obj.is_loopback
-
-            if (
-                ip_obj.is_private
-                or
-                ip_obj.is_loopback
-            ):
-
-                score = 5
-
-        except ValueError:
-
-            info["type"] = "Domain"
+                hostname = ""
 
             try:
 
-                resolved_ip = socket.gethostbyname(
-                    target_clean
-                )
-
-                info["resolved_ip"] = resolved_ip
-
-                try:
-
-                    reverse_name = socket.gethostbyaddr(
-                        resolved_ip
-                    )[0]
-
-                    info["reverse_dns"] = reverse_name
-
-                except Exception:
-
-                    info["reverse_dns"] = None
+                reverse_dns = socket.gethostbyaddr(
+                    ip_address
+                )[0]
 
             except Exception:
 
-                info["resolved_ip"] = None
+                reverse_dns = hostname
 
-                info["reverse_dns"] = None
+            if ip_obj.version == 4:
 
-                score = 30
+                ip_version = "IPv4"
 
-        info["risk_score"] = score
+            else:
 
-        info["risk_level"] = risk_level(
+                ip_version = "IPv6"
+
+            is_private = ip_obj.is_private
+
+            is_loopback = ip_obj.is_loopback
+
+            is_reserved = ip_obj.is_reserved
+
+            if is_loopback:
+
+                network_type = "Loopback"
+
+            elif is_private:
+
+                network_type = "Private Network"
+
+            elif is_reserved:
+
+                network_type = "Reserved"
+
+            else:
+
+                network_type = "Public Internet"
+
+            address_type = (
+                "Private"
+                if is_private
+                else "Public"
+            )
+
+            resolved_type = "IP Address"
+
+        except ValueError:
+
+            # ------------------------------------------------
+            # DOMAIN INPUT
+            # ------------------------------------------------
+
+            resolved_type = "Domain"
+
+            hostname = target_clean
+
+            try:
+
+                resolved = socket.gethostbyname_ex(
+                    target_clean
+                )
+
+                aliases = resolved[1]
+
+                addresses = resolved[2]
+
+                if addresses:
+
+                    ip_address = addresses[0]
+
+                if aliases:
+
+                    reverse_dns = (
+                        aliases[0]
+                    )
+
+                else:
+
+                    reverse_dns = target_clean
+
+                try:
+
+                    ip_obj = ipaddress.ip_address(
+                        ip_address
+                    )
+
+                    ip_version = (
+                        "IPv4"
+                        if ip_obj.version == 4
+                        else "IPv6"
+                    )
+
+                    is_private = (
+                        ip_obj.is_private
+                    )
+
+                    is_loopback = (
+                        ip_obj.is_loopback
+                    )
+
+                    is_reserved = (
+                        ip_obj.is_reserved
+                    )
+
+                    if is_loopback:
+
+                        network_type = "Loopback"
+
+                    elif is_private:
+
+                        network_type = "Private Network"
+
+                    elif is_reserved:
+
+                        network_type = "Reserved"
+
+                    else:
+
+                        network_type = "Public Internet"
+
+                    address_type = (
+                        "Private"
+                        if is_private
+                        else "Public"
+                    )
+
+                except Exception:
+
+                    network_type = (
+                        "Public Internet"
+                    )
+
+                    address_type = "Public"
+
+            except Exception as dns_error:
+
+                print(
+                    "DNS lookup error:",
+                    dns_error
+                )
+
+                network_type = (
+                    "DNS Resolution Failed"
+                )
+
+                address_type = (
+                    "Unknown"
+                )
+
+        result = {
+
+            "target": target,
+
+            "type": resolved_type,
+
+            "ip_address": ip_address or "Not found",
+
+            "hostname": hostname or "Not found",
+
+            "reverse_dns": reverse_dns or "Not found",
+
+            "network_type": network_type or "Unknown",
+
+            "address_type": address_type or "Unknown",
+
+            "ip_version": ip_version or "Unknown",
+
+            "is_private": is_private,
+
+            "is_loopback": is_loopback,
+
+            "is_reserved": is_reserved,
+
+            "dns_resolved": bool(
+                ip_address
+            )
+
+        }
+
+        # Informational feature,
+        # so no unnecessary high risk score.
+        score = 0
+
+        if not ip_address:
+
+            score = 20
+
+        result["risk_score"] = score
+
+        result["risk_level"] = risk_level(
             score
         )
 
-        history_entry = add_history(
+        result["status"] = get_status(
+            score
+        )
 
+        entry = add_history(
             "IP / Domain Info",
-
-            target_clean,
-
+            target,
             score,
-
-            info,
-
-            "Basic DNS/IP information lookup"
+            result,
+            "IP/domain information lookup completed."
         )
 
         return jsonify({
 
             "success": True,
 
-            "result":
-                info,
+            "result": result,
 
-            "risk_score":
-                score,
+            "history_entry": entry
 
-            "risk_level":
-                risk_level(score),
-
-            "history_id":
-                history_entry["id"]
         })
 
     except Exception as e:
@@ -1616,14 +1936,13 @@ def ip_domain_info():
 
             "success": False,
 
-            "error":
-                "Unable to retrieve information."
+            "error": "Unable to retrieve IP/domain information."
 
         }), 500
 
 
 # ============================================================
-# 7. SECURITY REPORT
+# SECURITY REPORT
 # ============================================================
 
 @app.route(
@@ -1638,54 +1957,67 @@ def security_report():
             silent=True
         ) or {}
 
-        report_data = data.get(
-            "data",
-            data
+        target = str(
+            data.get(
+                "target",
+                "Security Environment"
+            )
+        )
+
+        details = str(
+            data.get(
+                "details",
+                ""
+            )
         )
 
         prompt = f"""
-Create a professional defensive cybersecurity report
-from the following analysis data.
+Create a beginner-friendly defensive cybersecurity report.
 
-Data:
+Target:
+{target}
 
-{json.dumps(
-    report_data,
-    indent=2,
-    default=str
-)}
+Details:
+{details}
 
 Include:
 
-- Executive Summary
-- Findings
-- Risk Level
-- Why the finding may be risky
-- Recommended Defensive Actions
-- Prevention Tips
+1. Executive Summary
+2. Risk Assessment
+3. Important Findings
+4. Potential Risks
+5. Defensive Recommendations
+6. Final Security Advice
 
 Do not provide offensive instructions.
 """
 
-        report, provider = ask_ai(
+        answer, provider = ask_ai(
             prompt
         )
+
+        result = {
+
+            "target": target,
+
+            "report": answer,
+
+            "provider": provider
+
+        }
 
         return jsonify({
 
             "success": True,
 
-            "report":
-                report,
+            "result": result
 
-            "provider":
-                provider
         })
 
     except Exception as e:
 
         print(
-            "Security report error:",
+            "Report error:",
             e
         )
 
@@ -1693,14 +2025,13 @@ Do not provide offensive instructions.
 
             "success": False,
 
-            "error":
-                "Unable to generate the security report."
+            "error": "Unable to generate report."
 
         }), 500
 
 
 # ============================================================
-# 8. THREAT ALERTS
+# THREAT ALERTS
 # ============================================================
 
 @app.route(
@@ -1712,334 +2043,46 @@ def threat_alerts():
     alerts = [
 
         {
-            "title":
-                "Phishing Protection",
-
-            "severity":
-                "High",
-
-            "message":
-                "Be careful with unexpected login "
-                "and verification links.",
-
-            "action":
-                "Verify the sender through an official channel."
+            "title": "Phishing Awareness",
+            "severity": "High",
+            "description":
+                "Be careful with unexpected login and verification messages.",
+            "time": now()
         },
 
         {
-            "title":
-                "Password Safety",
-
-            "severity":
-                "Medium",
-
-            "message":
-                "Avoid reusing passwords across different accounts.",
-
-            "action":
-                "Use unique passwords for important accounts."
+            "title": "Password Security",
+            "severity": "Medium",
+            "description":
+                "Use unique passwords and enable multi-factor authentication.",
+            "time": now()
         },
 
         {
-            "title":
-                "File Safety",
-
-            "severity":
-                "Medium",
-
-            "message":
-                "Unexpected executable files can be risky.",
-
-            "action":
-                "Only open files from trusted sources."
+            "title": "Suspicious Files",
+            "severity": "High",
+            "description":
+                "Do not open unknown executable or script files.",
+            "time": now()
         },
 
         {
-            "title":
-                "Public Wi-Fi",
-
-            "severity":
-                "Medium",
-
-            "message":
-                "Public networks can expose traffic "
-                "to additional risks.",
-
-            "action":
-                "Avoid sensitive activity on untrusted networks."
+            "title": "Safe Browsing",
+            "severity": "Medium",
+            "description":
+                "Verify website addresses before entering sensitive information.",
+            "time": now()
         }
+
     ]
 
     return jsonify({
 
-        "success":
-            True,
+        "success": True,
 
-        "alerts":
-            alerts,
+        "alerts": alerts
 
-        "updated":
-            now()
     })
-
-
-# ============================================================
-# 9. SECURITY DASHBOARD
-# ============================================================
-
-@app.route(
-    "/api/security-dashboard",
-    methods=["GET"]
-)
-def security_dashboard():
-
-    try:
-
-        history = load_history()
-
-        total_scans = len(
-            history
-        )
-
-        if total_scans:
-
-            average_score = round(
-
-                sum(
-
-                    clamp_score(
-                        item.get(
-                            "risk_score",
-                            0
-                        )
-                    )
-
-                    for item in history
-
-                ) / total_scans
-            )
-
-        else:
-
-            average_score = 0
-
-        high_risk = sum(
-
-            1
-
-            for item in history
-
-            if clamp_score(
-                item.get(
-                    "risk_score",
-                    0
-                )
-            ) >= 60
-        )
-
-        medium_risk = sum(
-
-            1
-
-            for item in history
-
-            if 30 <= clamp_score(
-                item.get(
-                    "risk_score",
-                    0
-                )
-            ) < 60
-        )
-
-        low_risk = sum(
-
-            1
-
-            for item in history
-
-            if clamp_score(
-                item.get(
-                    "risk_score",
-                    0
-                )
-            ) < 30
-        )
-
-        type_counts = {}
-
-        for item in history:
-
-            scan_type = item.get(
-                "type",
-                "Unknown"
-            )
-
-            type_counts[
-                scan_type
-            ] = (
-
-                type_counts.get(
-                    scan_type,
-                    0
-                ) + 1
-            )
-
-        dashboard = {
-
-            "total_scans":
-                total_scans,
-
-            "average_risk_score":
-                average_score,
-
-            "overall_risk_level":
-                risk_level(
-                    average_score
-                ),
-
-            "high_risk_scans":
-                high_risk,
-
-            "medium_risk_scans":
-                medium_risk,
-
-            "low_risk_scans":
-                low_risk,
-
-            "scan_types":
-                type_counts,
-
-            "recent_scans":
-                history[:10],
-
-            "system_status":
-                "Online",
-
-            "ai_status": (
-
-                "Available"
-
-                if (
-                    gemini_clients
-                    or
-                    groq_client
-                )
-
-                else
-
-                "Unavailable"
-            ),
-
-            "ai_providers": {
-
-                "gemini":
-                    bool(
-                        gemini_clients
-                    ),
-
-                "groq":
-                    bool(
-                        groq_client
-                    )
-            },
-
-            "security_tips": [
-
-                "Never share passwords or OTP codes.",
-
-                "Verify unexpected links before opening them.",
-
-                "Keep your operating system and applications updated.",
-
-                "Use unique passwords for important accounts.",
-
-                "Back up important files regularly."
-            ]
-        }
-
-        # Return both formats:
-        # direct fields for the current frontend
-        # and dashboard object for compatibility.
-
-        return jsonify({
-
-            "success": True,
-
-            "total_scans":
-                total_scans,
-
-            "average_risk":
-                average_score,
-
-            "average_risk_score":
-                average_score,
-
-            "overall_risk_level":
-                dashboard[
-                    "overall_risk_level"
-                ],
-
-            "high_risk":
-                high_risk,
-
-            "high_risk_scans":
-                high_risk,
-
-            "medium_risk":
-                medium_risk,
-
-            "medium_risk_scans":
-                medium_risk,
-
-            "low_risk":
-                low_risk,
-
-            "low_risk_scans":
-                low_risk,
-
-            "scan_types":
-                type_counts,
-
-            "recent_scans":
-                history[:10],
-
-            "system_status":
-                "Online",
-
-            "ai_status":
-                dashboard[
-                    "ai_status"
-                ],
-
-            "ai_providers":
-                dashboard[
-                    "ai_providers"
-                ],
-
-            "security_tips":
-                dashboard[
-                    "security_tips"
-                ],
-
-            "dashboard":
-                dashboard
-        })
-
-    except Exception as e:
-
-        print(
-            "Dashboard error:",
-            e
-        )
-
-        return jsonify({
-
-            "success": False,
-
-            "error":
-                "Unable to load dashboard."
-
-        }), 500
 
 
 # ============================================================
@@ -2058,14 +2101,13 @@ def get_history():
 
         return jsonify({
 
-            "success":
-                True,
+            "success": True,
 
-            "count":
-                len(history),
-
-            "history":
+            "count": len(
                 history
+            ),
+
+            "history": history
 
         })
 
@@ -2078,14 +2120,11 @@ def get_history():
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
-            "error":
-                "Unable to load history.",
+            "error": "Unable to load history.",
 
-            "history":
-                []
+            "history": []
 
         }), 500
 
@@ -2104,21 +2143,18 @@ def delete_history():
 
             return jsonify({
 
-                "success":
-                    True,
+                "success": True,
 
                 "message":
                     "Scan history cleared.",
 
-                "history":
-                    []
+                "history": []
 
             })
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
             "error":
                 "Unable to clear history."
@@ -2134,11 +2170,228 @@ def delete_history():
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
             "error":
                 "Unable to clear history."
+
+        }), 500
+
+
+# ============================================================
+# ADVANCED SECURITY DASHBOARD
+# ============================================================
+
+@app.route(
+    "/api/security-dashboard",
+    methods=["GET"]
+)
+def security_dashboard():
+
+    try:
+
+        history = load_history()
+
+        total_scans = len(
+            history
+        )
+
+        scores = []
+
+        high_risk = 0
+        medium_risk = 0
+        low_risk = 0
+        critical_risk = 0
+
+        type_counts = {}
+
+        for item in history:
+
+            try:
+
+                score = int(
+                    item.get(
+                        "risk_score",
+                        0
+                    )
+                )
+
+            except Exception:
+
+                score = 0
+
+            score = clamp_score(
+                score
+            )
+
+            scores.append(
+                score
+            )
+
+            if score >= 80:
+
+                critical_risk += 1
+
+            elif score >= 60:
+
+                high_risk += 1
+
+            elif score >= 30:
+
+                medium_risk += 1
+
+            else:
+
+                low_risk += 1
+
+            scan_type = item.get(
+                "type",
+                "Unknown"
+            )
+
+            type_counts[
+                scan_type
+            ] = (
+                type_counts.get(
+                    scan_type,
+                    0
+                ) + 1
+            )
+
+        average_risk = (
+            round(
+                sum(scores) /
+                len(scores),
+                1
+            )
+            if scores
+            else 0
+        )
+
+        recent_scans = history[:10]
+
+        dashboard = {
+
+            "total_scans":
+                total_scans,
+
+            "average_risk":
+                average_risk,
+
+            "critical_risk":
+                critical_risk,
+
+            "high_risk":
+                high_risk,
+
+            "medium_risk":
+                medium_risk,
+
+            "low_risk":
+                low_risk,
+
+            "risk_distribution": {
+
+                "critical":
+                    critical_risk,
+
+                "high":
+                    high_risk,
+
+                "medium":
+                    medium_risk,
+
+                "low":
+                    low_risk
+
+            },
+
+            "scan_types":
+                type_counts,
+
+            "recent_scans":
+                recent_scans,
+
+            "database":
+                (
+                    "Supabase"
+                    if supabase_enabled()
+                    else "Local"
+                )
+
+        }
+
+        return jsonify({
+
+            "success": True,
+
+            # Direct values
+            "total_scans":
+                total_scans,
+
+            "average_risk":
+                average_risk,
+
+            "critical_risk":
+                critical_risk,
+
+            "high_risk":
+                high_risk,
+
+            "medium_risk":
+                medium_risk,
+
+            "low_risk":
+                low_risk,
+
+            "risk_distribution":
+                dashboard[
+                    "risk_distribution"
+                ],
+
+            "scan_types":
+                type_counts,
+
+            "recent_scans":
+                recent_scans,
+
+            # Nested dashboard
+            "dashboard":
+                dashboard
+
+        })
+
+    except Exception as e:
+
+        print(
+            "Dashboard error:",
+            e
+        )
+
+        return jsonify({
+
+            "success": False,
+
+            "error":
+                "Unable to load dashboard.",
+
+            "total_scans": 0,
+
+            "average_risk": 0,
+
+            "critical_risk": 0,
+
+            "high_risk": 0,
+
+            "medium_risk": 0,
+
+            "low_risk": 0,
+
+            "risk_distribution": {},
+
+            "scan_types": {},
+
+            "recent_scans": []
 
         }), 500
 
@@ -2159,52 +2412,55 @@ def explain_risk():
             silent=True
         ) or {}
 
-        result_data = data.get(
-
-            "finding",
-
+        score = clamp_score(
             data.get(
-                "data",
-                data
+                "score",
+                0
+            )
+        )
+
+        context = str(
+            data.get(
+                "context",
+                ""
             )
         )
 
         prompt = f"""
-Explain the following cybersecurity finding
-to a beginner.
+Explain this cybersecurity risk in simple language.
 
-Finding:
+Risk score:
+{score}/100
 
-{json.dumps(
-    result_data,
-    indent=2,
-    default=str
-)}
+Context:
+{context}
 
-Give:
-
-1. What was detected
-2. Why it may be risky
-3. What a normal user should do
-4. What the user should avoid
-
-Keep the answer defensive and easy to understand.
+Explain:
+- What the score means
+- Possible risk
+- Why it matters
+- Safe defensive actions
 """
 
-        explanation, provider = ask_ai(
+        answer, provider = ask_ai(
             prompt
         )
 
         return jsonify({
 
-            "success":
-                True,
+            "success": True,
+
+            "score": score,
+
+            "risk_level":
+                risk_level(score),
 
             "explanation":
-                explanation,
+                answer,
 
             "provider":
                 provider
+
         })
 
     except Exception as e:
@@ -2216,17 +2472,16 @@ Keep the answer defensive and easy to understand.
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
             "error":
-                "Unable to explain the risk."
+                "Unable to explain risk."
 
         }), 500
 
 
 # ============================================================
-# SMART RECOMMENDATIONS
+# SECURITY RECOMMENDATIONS
 # ============================================================
 
 @app.route(
@@ -2241,51 +2496,37 @@ def security_recommendations():
             silent=True
         ) or {}
 
-        result_data = data.get(
-
-            "finding",
-
+        context = str(
             data.get(
-                "data",
-                data
+                "context",
+                "General cybersecurity"
             )
         )
 
         prompt = f"""
-Create smart defensive cybersecurity recommendations
-based on this scan:
+Give 8 practical defensive cybersecurity
+recommendations for:
 
-{json.dumps(
-    result_data,
-    indent=2,
-    default=str
-)}
+{context}
 
-Return:
-
-- Immediate Actions
-- Recommended Actions
-- Prevention Tips
-
-Keep the advice practical for a normal user.
-
+Keep them beginner-friendly.
 Do not provide offensive instructions.
 """
 
-        recommendations, provider = ask_ai(
+        answer, provider = ask_ai(
             prompt
         )
 
         return jsonify({
 
-            "success":
-                True,
+            "success": True,
 
             "recommendations":
-                recommendations,
+                answer,
 
             "provider":
                 provider
+
         })
 
     except Exception as e:
@@ -2297,8 +2538,7 @@ Do not provide offensive instructions.
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
             "error":
                 "Unable to generate recommendations."
@@ -2314,7 +2554,7 @@ Do not provide offensive instructions.
     "/api/report/pdf",
     methods=["POST"]
 )
-def generate_pdf_report():
+def report_pdf():
 
     try:
 
@@ -2322,65 +2562,36 @@ def generate_pdf_report():
             silent=True
         ) or {}
 
-        report_title = data.get(
-            "title",
-            "Cyber Security AI - Security Report"
-        )
-
-        report_text = data.get(
-            "report",
-            ""
-        )
-
-        scan_type = data.get(
-            "scan_type",
-            "Security Analysis"
-        )
-
-        target = data.get(
-            "target",
-            "Not specified"
-        )
-
-        score = clamp_score(
+        target = str(
             data.get(
-                "risk_score",
-                0
+                "target",
+                "Cyber Security Report"
             )
         )
 
-        level = risk_level(
-            score
+        content = str(
+            data.get(
+                "content",
+                ""
+            )
         )
 
         try:
 
             from reportlab.lib.pagesizes import A4
-
-            from reportlab.lib.styles import (
-                getSampleStyleSheet
-            )
-
-            from reportlab.lib.enums import (
-                TA_CENTER
-            )
-
             from reportlab.platypus import (
                 SimpleDocTemplate,
                 Paragraph,
-                Spacer,
-                Table,
-                TableStyle
+                Spacer
             )
-
-            from reportlab.lib import colors
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.enums import TA_CENTER
 
         except ImportError:
 
             return jsonify({
 
-                "success":
-                    False,
+                "success": False,
 
                 "error":
                     "PDF library is not installed."
@@ -2390,132 +2601,29 @@ def generate_pdf_report():
         buffer = io.BytesIO()
 
         document = SimpleDocTemplate(
-
             buffer,
-
             pagesize=A4,
-
-            rightMargin=40,
-
-            leftMargin=40,
-
-            topMargin=40,
-
-            bottomMargin=40
+            title=target
         )
 
         styles = getSampleStyleSheet()
 
-        title_style = styles[
-            "Title"
-        ]
+        title_style = styles["Title"]
 
         title_style.alignment = (
             TA_CENTER
         )
 
-        normal_style = styles[
-            "BodyText"
-        ]
-
         story = []
 
         story.append(
-
             Paragraph(
-                report_title,
+                "Cyber Security AI",
                 title_style
             )
         )
 
         story.append(
-
-            Spacer(
-                1,
-                20
-            )
-        )
-
-        table_data = [
-
-            [
-                "Report Type",
-                scan_type
-            ],
-
-            [
-                "Target",
-                str(target)
-            ],
-
-            [
-                "Risk Score",
-                f"{score}/100"
-            ],
-
-            [
-                "Risk Level",
-                level
-            ],
-
-            [
-                "Generated",
-                now()
-            ]
-        ]
-
-        table = Table(
-
-            table_data,
-
-            colWidths=[
-                120,
-                350
-            ]
-        )
-
-        table.setStyle(
-
-            TableStyle([
-
-                (
-                    "GRID",
-                    (0, 0),
-                    (-1, -1),
-                    0.5,
-                    colors.grey
-                ),
-
-                (
-                    "BACKGROUND",
-                    (0, 0),
-                    (0, -1),
-                    colors.lightgrey
-                ),
-
-                (
-                    "VALIGN",
-                    (0, 0),
-                    (-1, -1),
-                    "TOP"
-                ),
-
-                (
-                    "PADDING",
-                    (0, 0),
-                    (-1, -1),
-                    8
-                )
-
-            ])
-        )
-
-        story.append(
-            table
-        )
-
-        story.append(
-
             Spacer(
                 1,
                 20
@@ -2523,40 +2631,33 @@ def generate_pdf_report():
         )
 
         story.append(
-
             Paragraph(
-                "<b>Security Analysis</b>",
-                styles["Heading2"]
+                f"<b>Target:</b> {target}",
+                styles["BodyText"]
             )
         )
 
         story.append(
-
             Spacer(
                 1,
-                8
+                12
             )
         )
 
-        clean_report = (
-
-            str(report_text)
-
+        safe_content = (
+            content
             .replace(
                 "&",
                 "&amp;"
             )
-
             .replace(
                 "<",
                 "&lt;"
             )
-
             .replace(
                 ">",
                 "&gt;"
             )
-
             .replace(
                 "\n",
                 "<br/>"
@@ -2564,40 +2665,9 @@ def generate_pdf_report():
         )
 
         story.append(
-
             Paragraph(
-                clean_report,
-                normal_style
-            )
-        )
-
-        story.append(
-
-            Spacer(
-                1,
-                20
-            )
-        )
-
-        story.append(
-
-            Paragraph(
-                "<b>Defensive Notice</b>",
-                styles["Heading2"]
-            )
-        )
-
-        story.append(
-
-            Paragraph(
-
-                "This report is intended for defensive "
-                "and educational cybersecurity purposes. "
-                "A scan result does not guarantee that a "
-                "system, file, or website is completely "
-                "safe or malicious.",
-
-                normal_style
+                safe_content,
+                styles["BodyText"]
             )
         )
 
@@ -2607,17 +2677,6 @@ def generate_pdf_report():
 
         buffer.seek(0)
 
-        filename = (
-
-            "cyber_security_report_"
-
-            + datetime.now().strftime(
-                "%Y%m%d_%H%M%S"
-            )
-
-            + ".pdf"
-        )
-
         return send_file(
 
             buffer,
@@ -2626,23 +2685,25 @@ def generate_pdf_report():
 
             as_attachment=True,
 
-            download_name=filename
+            download_name=(
+                "cyber-security-report.pdf"
+            )
+
         )
 
     except Exception as e:
 
         print(
-            "PDF report error:",
+            "PDF error:",
             e
         )
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
             "error":
-                "Unable to create PDF report."
+                "Unable to generate PDF."
 
         }), 500
 
@@ -2660,32 +2721,43 @@ def not_found(error):
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
             "error":
-                "API endpoint not found.",
-
-            "path":
-                request.path
+                "API endpoint not found."
 
         }), 404
 
-    return error
+    return send_from_directory(
+        FRONTEND_FOLDER,
+        "index.html"
+    )
 
 
 @app.errorhandler(413)
-def file_too_large(error):
+def too_large(error):
 
     return jsonify({
 
-        "success":
-            False,
+        "success": False,
 
         "error":
             "File is too large. Maximum size is 50 MB."
 
     }), 413
+
+
+@app.errorhandler(500)
+def internal_error(error):
+
+    return jsonify({
+
+        "success": False,
+
+        "error":
+            "Internal server error."
+
+    }), 500
 
 
 # ============================================================
@@ -2694,9 +2766,7 @@ def file_too_large(error):
 
 if __name__ == "__main__":
 
-    print(
-        "=" * 60
-    )
+    print("=" * 60)
 
     print(
         "Cyber Security AI"
@@ -2706,24 +2776,27 @@ if __name__ == "__main__":
         "Server: http://127.0.0.1:5000"
     )
 
-    print(
-        "=" * 60
-    )
+    print("=" * 60)
 
     print(
         "Gemini:",
         "Available"
         if gemini_clients
-        else
-        "Not configured"
+        else "Not configured"
     )
 
     print(
         "Groq:",
         "Available"
         if groq_client
-        else
-        "Not configured"
+        else "Not configured"
+    )
+
+    print(
+        "History:",
+        "Supabase"
+        if supabase_enabled()
+        else "Local JSON"
     )
 
     app.run(
