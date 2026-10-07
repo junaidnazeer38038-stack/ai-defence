@@ -116,7 +116,6 @@ if GROQ_API_KEY:
 # ============================================================
 
 GEMINI_MODEL = "gemini-3.8-flash"
-
 GROQ_MODEL = "openai/gpt-oss-20b"
 
 
@@ -181,7 +180,6 @@ def get_user_id():
     )
 
     if not user_id:
-
         user_id = str(
             uuid.uuid4()
         )
@@ -214,8 +212,6 @@ def load_all_history():
         ):
             return data
 
-        # Old shared history format
-        # is intentionally ignored.
         return {}
 
     except Exception as e:
@@ -255,7 +251,6 @@ def save_history_entry(entry):
     all_history = load_all_history()
 
     if user_id not in all_history:
-
         all_history[user_id] = []
 
     all_history[user_id].insert(
@@ -368,9 +363,7 @@ def clamp_score(score):
 
     try:
         score = int(score)
-
     except Exception:
-
         score = 0
 
     return max(
@@ -400,6 +393,22 @@ def risk_level(score):
     return "Low"
 
 
+def get_status(score):
+
+    score = clamp_score(score)
+
+    if score >= 80:
+        return "Critical Risk"
+
+    if score >= 60:
+        return "High Risk"
+
+    if score >= 30:
+        return "Medium Risk"
+
+    return "Safe"
+
+
 def add_history(
     scan_type,
     target,
@@ -407,6 +416,10 @@ def add_history(
     result,
     summary=""
 ):
+
+    score = clamp_score(
+        score
+    )
 
     entry = {
 
@@ -422,11 +435,13 @@ def add_history(
 
         "target": target,
 
-        "risk_score": clamp_score(
+        "risk_score": score,
+
+        "risk_level": risk_level(
             score
         ),
 
-        "risk_level": risk_level(
+        "status": get_status(
             score
         ),
 
@@ -521,29 +536,22 @@ def ask_groq(prompt):
             .chat
             .completions
             .create(
-
                 model=GROQ_MODEL,
-
                 messages=[
-
                     {
                         "role": "system",
                         "content": SYSTEM_PROMPT
                     },
-
                     {
                         "role": "user",
                         "content": prompt
                     }
-
                 ],
-
                 temperature=0.3
             )
         )
 
         if not response.choices:
-
             return None
 
         answer = (
@@ -643,24 +651,29 @@ def status():
 
         "status": "online",
 
-        "service": "Cyber Security AI",
+        "service":
+            "Cyber Security AI",
 
-        "ai_available": bool(
-            gemini_clients
-            or groq_client
-        ),
+        "ai_available":
+            bool(
+                gemini_clients
+                or groq_client
+            ),
 
-        "gemini_available": bool(
-            gemini_clients
-        ),
+        "gemini_available":
+            bool(
+                gemini_clients
+            ),
 
-        "groq_available": bool(
-            groq_client
-        ),
+        "groq_available":
+            bool(
+                groq_client
+            ),
 
         "features": 9,
 
-        "time": now()
+        "time":
+            now()
     })
 
 
@@ -690,15 +703,11 @@ def chat():
         if not message:
 
             return jsonify({
-
                 "success": False,
-
                 "reply":
                     "Please enter a message.",
-
                 "provider":
                     "System"
-
             }), 400
 
         answer, provider = ask_ai(
@@ -709,10 +718,11 @@ def chat():
 
             "success": True,
 
-            "reply": answer,
+            "reply":
+                answer,
 
-            "provider": provider
-
+            "provider":
+                provider
         })
 
     except Exception as e:
@@ -761,12 +771,9 @@ def scan_url_api():
         if not url:
 
             return jsonify({
-
                 "success": False,
-
                 "error":
                     "Please enter a URL."
-
             }), 400
 
         result = scan_url(
@@ -827,13 +834,9 @@ def scan_url_api():
             score
         )
 
-        result[
-            "risk_score"
-        ] = score
+        result["risk_score"] = score
 
-        result[
-            "risk_level"
-        ] = risk_level(
+        result["risk_level"] = risk_level(
             score
         )
 
@@ -854,16 +857,17 @@ def scan_url_api():
 
             "success": True,
 
-            "result": result,
+            "result":
+                result,
 
-            "risk_score": score,
+            "risk_score":
+                score,
 
             "risk_level":
                 risk_level(score),
 
             "history_id":
                 history_entry["id"]
-
         })
 
     except Exception as e:
@@ -949,7 +953,6 @@ def scan_file():
             ".ps1",
             ".jar",
             ".dll"
-
         }
 
         suspicious_extension = (
@@ -996,14 +999,10 @@ def scan_file():
                 else
 
                 "No obvious file-type warning was detected."
-
             )
         }
 
-        # Passwords/files are not uploaded anywhere
-        # except to this backend request.
-        # Only metadata/hash is saved in history.
-
+        # Only metadata/hash is saved.
         history_result = {
 
             "filename":
@@ -1050,7 +1049,6 @@ def scan_file():
 
             "history_id":
                 history_entry["id"]
-
         })
 
     except Exception as e:
@@ -1127,7 +1125,6 @@ def detect_phishing():
             "confirm your account",
             "limited time",
             "security alert"
-
         ]
 
         for word in phishing_words:
@@ -1138,12 +1135,10 @@ def detect_phishing():
                     word
                 )
 
+        # Correct URL detection
         url_matches = re.findall(
-
             r"https?://[^\s]+|www\.[^\s]+",
-
             text,
-
             flags=re.IGNORECASE
         )
 
@@ -1197,7 +1192,6 @@ def detect_phishing():
 
                 "No strong phishing pattern was detected, "
                 "but remain cautious."
-
             )
         }
 
@@ -1229,7 +1223,6 @@ def detect_phishing():
 
             "history_id":
                 history_entry["id"]
-
         })
 
     except Exception as e:
@@ -1292,7 +1285,6 @@ def check_password():
             "admin",
             "password123",
             "123456789"
-
         }
 
         checks = {
@@ -1354,7 +1346,6 @@ def check_password():
         ]:
 
             if checks[key]:
-
                 points += 1
 
         if checks[
@@ -1364,6 +1355,7 @@ def check_password():
             points = 0
 
         security_score = round(
+
             (
                 points / 6
             ) * 100
@@ -1413,37 +1405,12 @@ def check_password():
 
                 "Password has a stronger structure. "
                 "Use a unique password for every account."
-
             )
         }
 
-        # NEVER save actual password.
-        history_result = {
-
-            "length":
-                len(password),
-
-            "security_score":
-                security_score,
-
-            "risk_level":
-                risk_level(
-                    risk_score
-                )
-        }
-
-        history_entry = add_history(
-
-            "Password Check",
-
-            "Password",
-
-            risk_score,
-
-            history_result,
-
-            "Password strength analysis"
-        )
+        # IMPORTANT:
+        # Passwords are NEVER saved in history.
+        # No actual password or password metadata is stored.
 
         return jsonify({
 
@@ -1461,11 +1428,7 @@ def check_password():
                 ),
 
             "security_score":
-                security_score,
-
-            "history_id":
-                history_entry["id"]
-
+                security_score
         })
 
     except Exception as e:
@@ -1556,25 +1519,15 @@ def ip_domain_info():
                 target_clean
             )
 
-            info[
-                "type"
-            ] = "IP Address"
+            info["type"] = "IP Address"
 
-            info[
-                "ip_version"
-            ] = ip_obj.version
+            info["ip_version"] = ip_obj.version
 
-            info[
-                "is_private"
-            ] = ip_obj.is_private
+            info["is_private"] = ip_obj.is_private
 
-            info[
-                "is_global"
-            ] = ip_obj.is_global
+            info["is_global"] = ip_obj.is_global
 
-            info[
-                "is_loopback"
-            ] = ip_obj.is_loopback
+            info["is_loopback"] = ip_obj.is_loopback
 
             if (
                 ip_obj.is_private
@@ -1586,9 +1539,7 @@ def ip_domain_info():
 
         except ValueError:
 
-            info[
-                "type"
-            ] = "Domain"
+            info["type"] = "Domain"
 
             try:
 
@@ -1596,9 +1547,7 @@ def ip_domain_info():
                     target_clean
                 )
 
-                info[
-                    "resolved_ip"
-                ] = resolved_ip
+                info["resolved_ip"] = resolved_ip
 
                 try:
 
@@ -1606,35 +1555,23 @@ def ip_domain_info():
                         resolved_ip
                     )[0]
 
-                    info[
-                        "reverse_dns"
-                    ] = reverse_name
+                    info["reverse_dns"] = reverse_name
 
                 except Exception:
 
-                    info[
-                        "reverse_dns"
-                    ] = None
+                    info["reverse_dns"] = None
 
             except Exception:
 
-                info[
-                    "resolved_ip"
-                ] = None
+                info["resolved_ip"] = None
 
-                info[
-                    "reverse_dns"
-                ] = None
+                info["reverse_dns"] = None
 
                 score = 30
 
-        info[
-            "risk_score"
-        ] = score
+        info["risk_score"] = score
 
-        info[
-            "risk_level"
-        ] = risk_level(
+        info["risk_level"] = risk_level(
             score
         )
 
@@ -1666,7 +1603,6 @@ def ip_domain_info():
 
             "history_id":
                 history_entry["id"]
-
         })
 
     except Exception as e:
@@ -1744,7 +1680,6 @@ Do not provide offensive instructions.
 
             "provider":
                 provider
-
         })
 
     except Exception as e:
@@ -1777,7 +1712,6 @@ def threat_alerts():
     alerts = [
 
         {
-
             "title":
                 "Phishing Protection",
 
@@ -1790,11 +1724,9 @@ def threat_alerts():
 
             "action":
                 "Verify the sender through an official channel."
-
         },
 
         {
-
             "title":
                 "Password Safety",
 
@@ -1806,11 +1738,9 @@ def threat_alerts():
 
             "action":
                 "Use unique passwords for important accounts."
-
         },
 
         {
-
             "title":
                 "File Safety",
 
@@ -1822,11 +1752,9 @@ def threat_alerts():
 
             "action":
                 "Only open files from trusted sources."
-
         },
 
         {
-
             "title":
                 "Public Wi-Fi",
 
@@ -1839,21 +1767,19 @@ def threat_alerts():
 
             "action":
                 "Avoid sensitive activity on untrusted networks."
-
         }
-
     ]
 
     return jsonify({
 
-        "success": True,
+        "success":
+            True,
 
         "alerts":
             alerts,
 
         "updated":
             now()
-
     })
 
 
@@ -1890,9 +1816,7 @@ def security_dashboard():
 
                     for item in history
 
-                )
-                / total_scans
-
+                ) / total_scans
             )
 
         else:
@@ -1911,7 +1835,6 @@ def security_dashboard():
                     0
                 )
             ) >= 60
-
         )
 
         medium_risk = sum(
@@ -1926,7 +1849,6 @@ def security_dashboard():
                     0
                 )
             ) < 60
-
         )
 
         low_risk = sum(
@@ -1941,7 +1863,6 @@ def security_dashboard():
                     0
                 )
             ) < 30
-
         )
 
         type_counts = {}
@@ -1956,6 +1877,7 @@ def security_dashboard():
             type_counts[
                 scan_type
             ] = (
+
                 type_counts.get(
                     scan_type,
                     0
@@ -2006,7 +1928,6 @@ def security_dashboard():
                 else
 
                 "Unavailable"
-
             ),
 
             "ai_providers": {
@@ -2020,7 +1941,6 @@ def security_dashboard():
                     bool(
                         groq_client
                     )
-
             },
 
             "security_tips": [
@@ -2034,18 +1954,75 @@ def security_dashboard():
                 "Use unique passwords for important accounts.",
 
                 "Back up important files regularly."
-
             ]
         }
 
+        # Return both formats:
+        # direct fields for the current frontend
+        # and dashboard object for compatibility.
+
         return jsonify({
 
-            "success":
-                True,
+            "success": True,
+
+            "total_scans":
+                total_scans,
+
+            "average_risk":
+                average_score,
+
+            "average_risk_score":
+                average_score,
+
+            "overall_risk_level":
+                dashboard[
+                    "overall_risk_level"
+                ],
+
+            "high_risk":
+                high_risk,
+
+            "high_risk_scans":
+                high_risk,
+
+            "medium_risk":
+                medium_risk,
+
+            "medium_risk_scans":
+                medium_risk,
+
+            "low_risk":
+                low_risk,
+
+            "low_risk_scans":
+                low_risk,
+
+            "scan_types":
+                type_counts,
+
+            "recent_scans":
+                history[:10],
+
+            "system_status":
+                "Online",
+
+            "ai_status":
+                dashboard[
+                    "ai_status"
+                ],
+
+            "ai_providers":
+                dashboard[
+                    "ai_providers"
+                ],
+
+            "security_tips":
+                dashboard[
+                    "security_tips"
+                ],
 
             "dashboard":
                 dashboard
-
         })
 
     except Exception as e:
@@ -2075,20 +2052,42 @@ def security_dashboard():
 )
 def get_history():
 
-    history = load_history()
+    try:
 
-    return jsonify({
+        history = load_history()
 
-        "success":
-            True,
+        return jsonify({
 
-        "count":
-            len(history),
+            "success":
+                True,
 
-        "history":
-            history
+            "count":
+                len(history),
 
-    })
+            "history":
+                history
+
+        })
+
+    except Exception as e:
+
+        print(
+            "Get history error:",
+            e
+        )
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "error":
+                "Unable to load history.",
+
+            "history":
+                []
+
+        }), 500
 
 
 @app.route(
@@ -2097,29 +2096,51 @@ def get_history():
 )
 def delete_history():
 
-    success = clear_history()
+    try:
 
-    if success:
+        success = clear_history()
+
+        if success:
+
+            return jsonify({
+
+                "success":
+                    True,
+
+                "message":
+                    "Scan history cleared.",
+
+                "history":
+                    []
+
+            })
 
         return jsonify({
 
             "success":
-                True,
+                False,
 
-            "message":
-                "Scan history cleared."
+            "error":
+                "Unable to clear history."
 
-        })
+        }), 500
 
-    return jsonify({
+    except Exception as e:
 
-        "success":
-            False,
+        print(
+            "Clear history error:",
+            e
+        )
 
-        "error":
-            "Unable to clear history."
+        return jsonify({
 
-    }), 500
+            "success":
+                False,
+
+            "error":
+                "Unable to clear history."
+
+        }), 500
 
 
 # ============================================================
@@ -2139,7 +2160,9 @@ def explain_risk():
         ) or {}
 
         result_data = data.get(
+
             "finding",
+
             data.get(
                 "data",
                 data
@@ -2182,7 +2205,6 @@ Keep the answer defensive and easy to understand.
 
             "provider":
                 provider
-
         })
 
     except Exception as e:
@@ -2220,7 +2242,9 @@ def security_recommendations():
         ) or {}
 
         result_data = data.get(
+
             "finding",
+
             data.get(
                 "data",
                 data
@@ -2262,7 +2286,6 @@ Do not provide offensive instructions.
 
             "provider":
                 provider
-
         })
 
     except Exception as e:
@@ -2398,6 +2421,7 @@ def generate_pdf_report():
         story = []
 
         story.append(
+
             Paragraph(
                 report_title,
                 title_style
@@ -2405,6 +2429,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Spacer(
                 1,
                 20
@@ -2437,7 +2462,6 @@ def generate_pdf_report():
                 "Generated",
                 now()
             ]
-
         ]
 
         table = Table(
@@ -2484,7 +2508,6 @@ def generate_pdf_report():
                 )
 
             ])
-
         )
 
         story.append(
@@ -2492,6 +2515,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Spacer(
                 1,
                 20
@@ -2499,6 +2523,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Paragraph(
                 "<b>Security Analysis</b>",
                 styles["Heading2"]
@@ -2506,6 +2531,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Spacer(
                 1,
                 8
@@ -2513,19 +2539,24 @@ def generate_pdf_report():
         )
 
         clean_report = (
+
             str(report_text)
+
             .replace(
                 "&",
                 "&amp;"
             )
+
             .replace(
                 "<",
                 "&lt;"
             )
+
             .replace(
                 ">",
                 "&gt;"
             )
+
             .replace(
                 "\n",
                 "<br/>"
@@ -2533,6 +2564,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Paragraph(
                 clean_report,
                 normal_style
@@ -2540,6 +2572,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Spacer(
                 1,
                 20
@@ -2547,6 +2580,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Paragraph(
                 "<b>Defensive Notice</b>",
                 styles["Heading2"]
@@ -2554,6 +2588,7 @@ def generate_pdf_report():
         )
 
         story.append(
+
             Paragraph(
 
                 "This report is intended for defensive "
@@ -2573,10 +2608,13 @@ def generate_pdf_report():
         buffer.seek(0)
 
         filename = (
+
             "cyber_security_report_"
+
             + datetime.now().strftime(
                 "%Y%m%d_%H%M%S"
             )
+
             + ".pdf"
         )
 
@@ -2689,10 +2727,7 @@ if __name__ == "__main__":
     )
 
     app.run(
-
         host="127.0.0.1",
-
         port=5000,
-
         debug=True
     )
