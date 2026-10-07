@@ -816,6 +816,121 @@
                 overflow-x: auto;
             }
         }
+    
+/* =========================================================
+   PROFESSIONAL UI OVERRIDE - COMPACT SOC STYLE
+   Existing functionality is preserved.
+========================================================= */
+:root {
+    --bg: #07101c;
+    --bg-secondary: #0b1625;
+    --card: rgba(13, 25, 42, .94);
+    --card-hover: #122238;
+    --border: rgba(148,163,184,.13);
+    --text: #e8f1fb;
+    --muted: #8da2b8;
+    --primary: #38bdf8;
+    --primary-dark: #0284c7;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --sidebar: #060e19;
+    --input: #091522;
+    --shadow: 0 10px 30px rgba(0,0,0,.20);
+}
+body { font-size: 13px; }
+.sidebar { width: 248px; padding: 18px 12px; }
+.brand { padding: 3px 9px 18px; gap: 10px; }
+.brand-icon { width: 40px; height: 40px; border-radius: 11px; font-size: 19px; }
+.brand h2 { font-size: 15px; }
+.nav-btn { padding: 10px 11px; margin: 2px 0; border-radius: 9px; font-size: 12px; gap: 10px; }
+.nav-icon { width: 22px; font-size: 15px; }
+.menu-title { padding: 8px 10px; font-size: 9px; }
+.sidebar-bottom { margin-top: 14px; padding: 12px 9px; }
+.main { margin-left: 248px; }
+.topbar { height: 68px; padding: 0 24px; }
+.page-heading h1 { font-size: 18px; }
+.page-heading p { font-size: 10px; }
+.system-status { padding: 7px 10px; font-size: 10px; }
+.icon-btn { width: 35px; height: 35px; font-size: 15px; }
+.content { padding: 22px 24px 30px; max-width: 1500px; }
+.welcome { margin-bottom: 16px; }
+.welcome h2 { font-size: 22px; margin-bottom: 5px; letter-spacing: -.2px; }
+.welcome p { font-size: 12px; line-height: 1.5; }
+.card { border-radius: 13px; padding: 18px; box-shadow: var(--shadow); }
+.card-title { margin-bottom: 14px; }
+.card-title h3 { font-size: 14px; }
+.card-title p { font-size: 10px; }
+.grid { gap: 13px; }
+.grid-2 { gap: 14px; }
+.grid-3 { gap: 13px; }
+.grid-4 { gap: 12px; }
+.stat-card { padding: 16px; }
+.stat-icon { width: 34px; height: 34px; margin-bottom: 10px; border-radius: 9px; }
+.stat-value { font-size: 23px; }
+.stat-label { font-size: 10px; }
+.form-group { margin-bottom: 12px; }
+label { font-size: 11px; margin-bottom: 6px; }
+input, textarea { border-radius: 9px; padding: 10px 12px; font-size: 12px; }
+textarea { min-height: 105px; }
+.btn { padding: 9px 14px; border-radius: 9px; font-size: 11px; }
+.button-row { gap: 7px; margin-top: 12px; }
+.result { margin-top: 13px; padding: 14px; border-radius: 11px; }
+.result-line { padding: 8px 0; font-size: 11px; }
+.risk-box { margin: 12px 0; padding: 14px; border-radius: 11px; }
+.risk-number { font-size: 25px; }
+.risk-label { padding: 5px 8px; font-size: 10px; }
+.risk-bar { height: 7px; }
+.alert { padding: 12px; border-radius: 10px; margin-bottom: 8px; }
+.alert-title { font-size: 12px; }
+.alert p { font-size: 10px; }
+.feature-card { padding: 16px; }
+.feature-icon { font-size: 20px; margin-bottom: 9px; }
+.feature-card h3 { font-size: 13px; }
+.feature-card p { font-size: 10px; }
+.empty { padding: 24px; }
+
+/* Chat: compact, professional, balanced */
+#chat .welcome { display:flex; align-items:center; justify-content:space-between; gap:20px; padding: 0 2px; }
+#chat .welcome p { max-width: 620px; }
+#chat > .card { max-width: 1120px; padding: 14px; }
+#chat .chat-box { height: 340px; padding: 14px; margin-bottom: 10px; border-radius: 11px; }
+#chat .message { max-width: 78%; padding: 10px 12px; margin-bottom: 9px; border-radius: 10px; font-size: 12px; line-height: 1.5; }
+#chat .message-label { font-size: 9px; margin-bottom: 3px; }
+#chat .chat-input-row { gap: 7px; }
+#chat .chat-input-row input { height: 40px; }
+#chat .chat-input-row .btn { min-width: 76px; height: 40px; }
+
+/* Make every tool page feel compact instead of oversized */
+.page > .card { max-width: 1120px; }
+.page > .grid, .page > .card + .grid { max-width: 1120px; }
+
+/* tables */
+.history-table { font-size: 11px; }
+.history-table th { padding: 10px; font-size: 9px; }
+.history-table td { padding: 10px; }
+
+/* subtle scrollbar */
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148,163,184,.20); border-radius: 20px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,.32); }
+
+@media (max-width: 1000px) {
+    .sidebar { width: 225px; }
+    .main { margin-left: 225px; }
+    .content { padding: 18px; }
+}
+@media (max-width: 760px) {
+    .main { margin-left: 0; }
+    .content { padding: 15px; }
+    .topbar { height: 62px; padding: 0 13px; }
+    #chat .welcome { display:block; }
+    #chat > .card { padding: 10px; }
+    #chat .chat-box { height: 380px; }
+    #chat .message { max-width: 90%; }
+}
+
     </style>
 </head>
 
@@ -938,38 +1053,35 @@
             <div class="page active" id="chat">
 
                 <div class="welcome">
-                    <h2>Security Intelligence Assistant</h2>
-                    <p>
-                        Ask questions about cybersecurity, privacy, phishing,
-                        online safety and defensive security.
-                    </p>
+                    <div>
+                        <h2>Security Intelligence Assistant</h2>
+                        <p>Ask about cybersecurity, privacy, phishing, online safety and defensive security.</p>
+                    </div>
+                    <div class="system-status" style="white-space:nowrap;">
+                        <span class="dot"></span> AI Assistant Ready
+                    </div>
                 </div>
 
                 <div class="card">
+                    <div class="card-title">
+                        <div>
+                            <h3>AI Security Assistant</h3>
+                            <p>Defensive cybersecurity guidance</p>
+                        </div>
+                        <span>🛡️</span>
+                    </div>
 
                     <div class="chat-box" id="chatBox">
-
                         <div class="message ai">
                             <div class="message-label">CYBER SECURITY AI</div>
-                            Hello! I am your AI Security Assistant.
-                            How can I help you with cybersecurity today?
+                            Hello! I am your AI Security Assistant. How can I help you with cybersecurity today?
                         </div>
-
                     </div>
 
                     <div class="chat-input-row">
-                        <input
-                            id="chatInput"
-                            type="text"
-                            placeholder="Ask a cybersecurity question..."
-                            onkeydown="if(event.key === 'Enter') sendChat()"
-                        >
-
-                        <button class="btn btn-primary" onclick="sendChat()">
-                            Send
-                        </button>
+                        <input id="chatInput" type="text" placeholder="Ask a cybersecurity question..." onkeydown="if(event.key === 'Enter') sendChat()">
+                        <button class="btn btn-primary" onclick="sendChat()">Send</button>
                     </div>
-
                 </div>
 
             </div>
@@ -2442,24 +2554,27 @@
                     }
                 );
 
+                const info = data.result || data;
+
                 result.innerHTML = `
 
                     <h4>🌐 Network Information</h4>
 
-                    ${riskToolsHTML(
-                        data,
-                        "ip-domain",
-                        target
-                    )}
+                    ${riskToolsHTML(data, "ip-domain", target)}
 
                     <div class="result-line">
                         <span>Target</span>
-                        <span>${escapeHTML(data.target)}</span>
+                        <span>${escapeHTML(info.target || target)}</span>
+                    </div>
+
+                    <div class="result-line">
+                        <span>Type</span>
+                        <span>${escapeHTML(info.type || "Unknown")}</span>
                     </div>
 
                     <div class="result-line">
                         <span>IP Address</span>
-                        <span>${escapeHTML(data.ip)}</span>
+                        <span>${escapeHTML(info.resolved_ip || info.ip || "Not resolved")}</span>
                     </div>
 
                     <div class="result-line">
@@ -2718,13 +2833,13 @@
                     <h4>📄 Security Report Generated</h4>
 
                     <div class="result-line">
-                        <span>Report ID</span>
-                        <span>${escapeHTML(data.report_id)}</span>
+                        <span>Provider</span>
+                        <span>${escapeHTML(data.provider || "AI")}</span>
                     </div>
 
                     <div class="result-line">
-                        <span>Created</span>
-                        <span>${escapeHTML(data.created)}</span>
+                        <span>Status</span>
+                        <span>Generated successfully</span>
                     </div>
 
                     <div class="alert" style="margin-top:15px;">
@@ -2736,7 +2851,7 @@
                             white-space:pre-wrap;
                             margin-top:8px;
                         ">
-                            ${escapeHTML(data.report)}
+                            ${escapeHTML(data.report || data.message || "No report returned.")}
                         </p>
                     </div>
 

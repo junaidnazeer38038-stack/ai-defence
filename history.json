@@ -1,40 +1,39 @@
-[
-  {
-    "id": "8b787fc67796",
-    "type": "URL Scan",
-    "target": "https://iplogger.com/2hLkD9",
-    "risk_score": 10,
-    "risk_level": "Low",
-    "summary": "URL safety analysis",
-    "result": {
-      "status": "low-risk",
-      "url": "https://iplogger.com/2hLkD9",
-      "domain": "iplogger.com",
-      "protocol": "https",
-      "warnings": [],
-      "message": "No basic suspicious indicators were detected.",
+{
+  "02157055-571a-4202-920e-afc513e9a642": [
+    {
+      "id": "38bdbbad7447",
+      "type": "IP / Domain Info",
+      "target": "google.com",
       "risk_score": 10,
-      "risk_level": "Low"
+      "risk_level": "Low",
+      "summary": "Basic DNS/IP information lookup",
+      "result": {
+        "target": "google.com",
+        "normalized_target": "google.com",
+        "timestamp": "2026-10-07 02:29:25",
+        "type": "Domain",
+        "resolved_ip": "142.250.187.78",
+        "reverse_dns": "pnfjra-ao-in-f14.1e100.net",
+        "risk_score": 10,
+        "risk_level": "Low"
+      },
+      "timestamp": "2026-10-07 02:29:29"
     },
-    "timestamp": "2026-10-06 04:18:28"
-  },
-  {
-    "id": "c52eed26cbbb",
-    "type": "URL Scan",
-    "target": "https://console.groq.com/keys?utm_source=chatgpt.com",
-    "risk_score": 10,
-    "risk_level": "Low",
-    "summary": "URL safety analysis",
-    "result": {
-      "status": "low-risk",
-      "url": "https://console.groq.com/keys?utm_source=chatgpt.com",
-      "domain": "console.groq.com",
-      "protocol": "https",
-      "warnings": [],
-      "message": "No basic suspicious indicators were detected.",
-      "risk_score": 10,
-      "risk_level": "Low"
-    },
-    "timestamp": "2026-10-06 04:08:45"
-  }
-]
+    {
+      "id": "0faf6aaeea95",
+      "type": "File Scan",
+      "target": "index.html",
+      "risk_score": 5,
+      "risk_level": "Low",
+      "summary": "File metadata and hash analysis",
+      "result": {
+        "filename": "index.html",
+        "extension": ".html",
+        "size_bytes": 95903,
+        "sha256": "b124f2a9be121c49d954af97c90f3e5277f1d6c36fae1b9cea447e9ee1099236",
+        "suspicious_extension": false
+      },
+      "timestamp": "2026-10-07 02:29:07"
+    }
+  ]
+}
