@@ -1281,7 +1281,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             <div class="top-actions">
                 <button class="icon-btn mobile-menu" onclick="toggleSidebar()">☰</button>
 
-                <button class="back-home-btn" id="backHomeButton" type="button" onclick="showPage('dashboard')" aria-label="Go back to overview">&larr; Overview</button>
+                <button class="back-home-btn" id="backHomeButton" type="button" onclick="goBackPage()" aria-label="Go back to the previous screen" data-i18n="back">&larr; Back</button>
 
                 <div class="page-heading">
                     <h1 id="pageTitle">Overview</h1>
@@ -2344,7 +2344,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
         const originalUiText = new WeakMap();
 
         const englishToUrdu = {
-            "Overview": "جائزہ", "Your security activity and service status": "آپ کی سکیورٹی سرگرمیاں اور سروس کی حالت",
+            "Overview": "جائزہ", "Your security activity and service status": "آپ کی سکیورٹی سرگرمیاں اور سروس کی حالت", "← Back": "→ واپس",
             "All tools": "تمام ٹولز", "Find the right security tool for your task": "اپنے کام کے لیے سکیورٹی ٹول تلاش کریں",
             "AI Assistant": "اے آئی معاون", "Security alerts": "سکیورٹی الرٹس", "Past scans": "پچھلے اسکین",
             "Feedback": "رائے", "About": "تعارف", "Sign out": "لاگ آؤٹ", "Profile": "پروفائل",
@@ -2653,17 +2653,19 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
            PAGE NAVIGATION
         ========================================================= */
 
-        function showPage(pageId, button) {
+        function showPage(pageId, button, navigationOptions = {}) {
+            const page = document.getElementById(pageId);
+            if (!page) return;
+
+            const previousPageId = document.querySelector(".page.active")?.id;
+            if (!navigationOptions.fromHistory && previousPageId !== pageId) {
+                window.history.pushState({ cyberApp: true, pageId }, "");
+            }
 
             document.querySelectorAll(".page").forEach(page => {
                 page.classList.remove("active");
             });
-
-            const page = document.getElementById(pageId);
-
-            if (page) {
-                page.classList.add("active");
-            }
+            page.classList.add("active");
 
             document.querySelectorAll(".nav-btn").forEach(btn => {
                 btn.classList.remove("active");
@@ -2716,6 +2718,30 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
 
             document.getElementById("sidebar").classList.remove("open");
             setLanguage(currentLanguage);
+        }
+
+        function goBackPage() {
+            if (window.history.state && window.history.state.cyberApp && window.history.length > 1) {
+                window.history.back();
+                return;
+            }
+            showPage("dashboard");
+        }
+
+        function initializePageNavigation() {
+            const savedState = window.history.state;
+            if (savedState && savedState.cyberApp && document.getElementById(savedState.pageId)) {
+                showPage(savedState.pageId, null, { fromHistory: true });
+            } else {
+                window.history.replaceState({ cyberApp: true, pageId: "dashboard" }, "");
+            }
+
+            window.addEventListener("popstate", event => {
+                const state = event.state;
+                if (state && state.cyberApp && document.getElementById(state.pageId)) {
+                    showPage(state.pageId, null, { fromHistory: true });
+                }
+            });
         }
 
 
@@ -4586,6 +4612,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             () => {
 
                 loadTheme();
+                initializePageNavigation();
                 let savedLanguage = "en";
                 try { savedLanguage = localStorage.getItem("cyberLanguage") || "en"; } catch (error) { /* Use English by default. */ }
                 setLanguage(savedLanguage);
