@@ -1620,6 +1620,7 @@ def analyze_screen():
             f"User request: {question or 'Identify visible security warnings or suspicious login prompts.'}"
         )
 
+        provider_failures = []
         for client in gemini_clients:
             try:
                 response = client.models.generate_content(
@@ -1629,10 +1630,33 @@ def analyze_screen():
                 analysis = getattr(response, "text", None)
                 if analysis and analysis.strip():
                     return jsonify({"success": True, "analysis": analysis.strip(), "provider": "Gemini"})
+                provider_failures.append((None, "EmptyResponse"))
             except Exception as error:
-                print(f"Screen analysis provider failed ({type(error).__name__}).")
+                status_code = getattr(error, "code", None) or getattr(error, "status_code", None)
+                try:
+                    status_code = int(status_code)
+                except (TypeError, ValueError):
+                    status_code = None
+                provider_failures.append((status_code, type(error).__name__))
+                print(f"Screen analysis provider failed ({type(error).__name__}, HTTP {status_code or 'unknown'}).")
 
-        return jsonify({"success": False, "error": "Gemini could not analyze this snapshot. Try again later."}), 503
+        if provider_failures:
+            statuses = {status for status, _ in provider_failures if status is not None}
+            if statuses & {401, 403}:
+                message = "Gemini rejected the API key or project access. Check the production Gemini key and API access settings."
+            elif 429 in statuses:
+                message = "Gemini quota or rate limit was reached. Check the Gemini project quota and try again later."
+            elif 404 in statuses:
+                message = "The configured Gemini model is unavailable. Check the GEMINI_MODEL setting in the deployment."
+            elif 400 in statuses:
+                message = "Gemini rejected this image or request. Try sharing a different screen or window."
+            elif all(name == "EmptyResponse" for _, name in provider_failures):
+                message = "Gemini received the image but returned no analysis. Try again with a clearer screen capture."
+            else:
+                message = "Gemini could not complete the image request. Check the Vercel Function log for the safe error type and HTTP status."
+            return jsonify({"success": False, "error": message}), 503
+
+        return jsonify({"success": False, "error": "No Gemini provider is available to analyze this snapshot."}), 503
     except Exception as error:
         print(f"Screen analysis failed ({type(error).__name__}).")
         return jsonify({"success": False, "error": "Unable to analyze the selected snapshot."}), 500

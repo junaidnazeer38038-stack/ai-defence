@@ -4870,7 +4870,15 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                 const video = document.createElement("video");
                 video.srcObject = stream;
                 await video.play();
-                await new Promise(resolve => setTimeout(resolve, 250));
+                await new Promise((resolve, reject) => {
+                    const deadline = performance.now() + 3000;
+                    const waitForFrame = () => {
+                        if (video.videoWidth > 0 && video.videoHeight > 0) return resolve();
+                        if (performance.now() >= deadline) return reject(new Error("The selected screen did not provide a video frame. Please choose it again."));
+                        requestAnimationFrame(waitForFrame);
+                    };
+                    waitForFrame();
+                });
                 const canvas = document.createElement("canvas");
                 const scale = Math.min(1, 1280 / video.videoWidth);
                 canvas.width = Math.round(video.videoWidth * scale);
