@@ -764,7 +764,7 @@ def load_public_feedback():
 
     result = supabase_request(
         "GET",
-        "feedback?select=id,rating,comment,created_at&order=created_at.desc&limit=1000"
+        "feedback?select=id,username,rating,comment,created_at&order=created_at.desc&limit=1000"
     )
 
     if result is None:
@@ -780,9 +780,10 @@ def load_public_feedback():
     ]
 
 
-def save_public_feedback(rating, comment):
+def save_public_feedback(rating, comment, username):
 
     entry = {
+        "username": username,
         "rating": rating,
         "comment": comment,
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -2952,7 +2953,13 @@ def submit_feedback():
     if len(comment) > 500:
         return jsonify({"success": False, "error": "Feedback must be 500 characters or fewer."}), 400
 
-    if not save_public_feedback(rating, comment):
+    auth_user = getattr(g, "auth_user", None)
+    metadata = auth_user.get("user_metadata") if isinstance(auth_user, dict) else None
+    username = metadata.get("username", "") if isinstance(metadata, dict) else ""
+    if not isinstance(username, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{3,24}", username):
+        username = "Anonymous"
+
+    if not save_public_feedback(rating, comment, username):
         return jsonify({
             "success": False,
             "error": "Feedback could not be saved. Check the Supabase feedback table and server configuration."

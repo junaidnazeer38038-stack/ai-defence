@@ -1952,7 +1952,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                             <textarea id="feedbackComment" maxlength="500" placeholder="What should we keep or improve?"></textarea>
                         </div>
 
-                        <p class="feedback-meta" style="margin-bottom:14px;">Your rating and comment are public. Please do not include passwords, API keys, or personal information.</p>
+                        <p class="feedback-meta" style="margin-bottom:14px;">Your username, rating and comment are public. Your email is not shown. Please do not include passwords, API keys, or personal information.</p>
                         <button class="btn btn-primary" id="submitFeedbackButton" type="button" onclick="submitFeedback()">Send feedback</button>
                         <p class="feedback-meta" id="feedbackFormStatus" role="status" aria-live="polite" style="margin-top:12px;"></p>
                     </div>
@@ -2439,6 +2439,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             "Threat Alerts": "خطرے کے الرٹس", "Security awareness alerts and defensive recommendations.": "سکیورٹی الرٹس اور دفاعی تجاویز۔",
             "Community Feedback": "صارفین کی رائے", "Share a star rating and read feedback from other visitors.": "ریٹنگ دیں اور دوسرے صارفین کی رائے پڑھیں۔",
             "Rate this project": "اس پروجیکٹ کی ریٹنگ دیں", "Your review will be visible to everyone.": "آپ کی رائے سب کو نظر آئے گی۔",
+            "Your username, rating and comment are public. Your email is not shown. Please do not include passwords, API keys, or personal information.": "آپ کا یوزر نیم، ریٹنگ اور تبصرہ سب کو نظر آئے گا۔ ای میل نہیں دکھائی جائے گی۔ پاس ورڈ، API کی یا ذاتی معلومات شامل نہ کریں۔",
             "Your star rating": "آپ کی اسٹار ریٹنگ", "Comment (optional, up to 500 characters)": "تبصرہ (اختیاری، 500 حروف تک)",
             "What should we keep or improve?": "ہمیں کیا بہتر کرنا چاہیے؟", "Send feedback": "رائے بھیجیں", "Visitor reviews": "صارفین کے تبصرے",
             "Ratings and comments are shared with everyone.": "ریٹنگ اور تبصرے سب کے ساتھ شیئر ہوتے ہیں۔",
@@ -4189,10 +4190,11 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             list.innerHTML = feedback.map(item => {
                 const rating = Math.min(5, Math.max(1, Number(item.rating) || 1));
                 const date = item.created_at ? new Date(item.created_at).toLocaleString() : "";
+                const username = item.username || (currentLanguage === "ur" ? "گمنام" : "Anonymous");
                 return `
                     <article class="feedback-item">
                         <div class="feedback-item-header">
-                            <span class="feedback-stars" aria-label="${rating} out of 5 stars">${"★".repeat(rating)}${"☆".repeat(5 - rating)}</span>
+                            <span><strong class="feedback-author">${escapeHTML(username)}</strong><br><span class="feedback-stars" aria-label="${rating} out of 5 stars">${"★".repeat(rating)}${"☆".repeat(5 - rating)}</span></span>
                             <time class="feedback-date">${escapeHTML(date)}</time>
                         </div>
                         <p class="feedback-comment">${escapeHTML(item.comment || "Star rating only.")}</p>
