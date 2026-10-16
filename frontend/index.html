@@ -1072,6 +1072,9 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 .nav-btn:hover { transform: translateX(2px); background: rgba(56,189,248,.08); color: var(--text); }
 .nav-btn.active { color: #f2f9ff; background: linear-gradient(90deg, rgba(14,165,233,.2), rgba(14,165,233,.06)); box-shadow: inset 3px 0 0 var(--primary); }
 .topbar { backdrop-filter: blur(18px); background: rgba(7,17,31,.78); border-bottom-color: rgba(148,163,184,.12); }
+.back-home-btn { display: none; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 9px; background: var(--card); color: var(--text); font-size: 11px; font-weight: 650; cursor: pointer; white-space: nowrap; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+.back-home-btn.visible { display: inline-flex; }
+.back-home-btn:hover { transform: translateX(-2px); border-color: rgba(56,189,248,.45); background: var(--card-hover); }
 .page.active { animation: pageArrive .32s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes pageArrive { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
 .workspace-hero { position: relative; overflow: hidden; margin: 0 0 22px; padding: 30px 32px; border: 1px solid rgba(56,189,248,.2); border-radius: 20px; background: linear-gradient(115deg, rgba(12,42,67,.94), rgba(17,31,58,.9) 60%, rgba(31,35,73,.88)); box-shadow: 0 20px 50px rgba(2,8,23,.2); }
@@ -1248,6 +1251,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
             <div class="top-actions">
                 <button class="icon-btn mobile-menu" onclick="toggleSidebar()">☰</button>
+
+                <button class="back-home-btn" id="backHomeButton" type="button" onclick="showPage('workspace')" aria-label="Go back to home">&larr; Home</button>
 
                 <div class="page-heading">
                     <h1 id="pageTitle">Home</h1>
@@ -2496,6 +2501,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
             document.querySelectorAll(".nav-btn").forEach(btn => {
                 btn.classList.remove("active");
             });
+
+            document.getElementById("backHomeButton").classList.toggle("visible", pageId !== "workspace");
 
             const activeButton = button || Array.from(document.querySelectorAll(".nav-btn")).find(navButton => {
                 const action = navButton.getAttribute("onclick") || "";
