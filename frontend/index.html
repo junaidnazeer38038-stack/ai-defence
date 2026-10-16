@@ -1248,6 +1248,22 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
 @media(max-width:560px){.theme-select{width:92px;max-width:92px!important;padding:7px 3px;font-size:10px}.topbar .system-status{padding:0;border:0;background:transparent}.topbar .system-status #headerStatusText{display:none}}
 @media(max-width:760px){.overview-hero{padding:21px}.risk-row{grid-template-columns:68px minmax(40px,1fr) 28px}}
 
+        /* Site-wide readability: strengthen secondary text and raise small UI type. */
+        :root { --text: #f1f6fc; --muted: #b6c5d6; }
+        body.light { --text: #102033; --muted: #475569; }
+        body.cyber-neon { --text: #f2fcff; --muted: #b2c9dd; }
+        body { color: var(--text); font-size: 15px; line-height: 1.55; }
+        .menu-title, .page-heading p, .system-status, .card-title p, .stat-label,
+        .risk-label, .alert p, .feature-card p, .history-table th { font-size: 12px; }
+        .nav-btn, .welcome p, .result-line, .history-table { font-size: 14px; }
+        label { font-size: 13px; }
+        input, textarea { font-size: 14px; }
+        .btn { font-size: 13px; }
+        #chat .message { font-size: 14px; line-height: 1.65; }
+        #chat .message-label { color: var(--muted); font-size: 11px; }
+        #chat .chat-suggestions button, #chat .chat-help-text { font-size: 12px; }
+        #chat .chat-stop-button:disabled { color: #aab8c8; }
+        body.light #chat .chat-stop-button:disabled { color: #64748b; }
     </style>
 </head>
 
