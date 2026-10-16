@@ -430,6 +430,7 @@
         .auth-card > p { margin-bottom: 20px; color: var(--muted); font-size: 13px; line-height: 1.6; }
         .auth-form { display: grid; gap: 13px; }
         .auth-form label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; }
+        #authUsernameField[hidden] { display: none; }
         .auth-form input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--input); color: var(--text); }
         .auth-switch { width: 100%; margin-top: 15px; border: 0; background: transparent; color: var(--primary); cursor: pointer; font-size: 12px; }
         .auth-status { min-height: 20px; margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -1073,6 +1074,7 @@ textarea { min-height: 105px; }
             <h2 id="authTitle">Sign in</h2>
             <p id="authDescription">Sign in to use the Cyber Security AI workspace.</p>
             <form class="auth-form" id="authForm" onsubmit="submitAuthForm(event)">
+                <label id="authUsernameField" hidden>Username (visible only to you and admin)<input id="authUsername" type="text" autocomplete="nickname" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" placeholder="e.g. junaid_01"></label>
                 <label>Email address<input id="authEmail" type="email" autocomplete="email" maxlength="320" required></label>
                 <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" maxlength="256" required></label>
                 <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
@@ -1169,7 +1171,7 @@ textarea { min-height: 105px; }
                     ☀️
                 </button>
                 <div class="auth-account" id="authAccount">
-                    <span class="auth-account-email" id="authAccountEmail"></span>
+                    <span class="auth-account-email" id="authAccountName"></span>
                     <button class="auth-signout" type="button" onclick="signOut()">Sign out</button>
                 </div>
             </div>
@@ -1996,8 +1998,8 @@ textarea { min-height: 105px; }
                     <p class="feedback-meta" id="adminUsersStatus" role="status" aria-live="polite">Only the configured administrator can view this list.</p>
                     <div class="admin-table-wrap" style="margin-top:14px;">
                         <table class="admin-table">
-                            <thead><tr><th>Email</th><th>Joined</th><th>Last sign in</th><th>Email verified</th></tr></thead>
-                            <tbody id="adminUsersBody"><tr><td colspan="4">Open this page to load users.</td></tr></tbody>
+                            <thead><tr><th>Username</th><th>Email</th><th>Joined</th><th>Last sign in</th><th>Email verified</th></tr></thead>
+                            <tbody id="adminUsersBody"><tr><td colspan="5">Open this page to load users.</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -2129,13 +2131,16 @@ textarea { min-height: 105px; }
             const signup = authMode === "signup";
             document.getElementById("authTitle").textContent = signup ? "Create your account" : "Sign in";
             document.getElementById("authDescription").textContent = signup
-                ? "Create an account with your email. We will send a verification link before sign-in."
+                ? "Create an account with your email and a username. We will send a verification link before sign-in."
                 : "Sign in to use the Cyber Security AI workspace.";
             document.getElementById("authSubmit").textContent = signup ? "Create account" : "Sign in";
             document.getElementById("authSwitch").textContent = signup
                 ? "Already registered? Sign in"
                 : "New here? Create an account";
             document.getElementById("authPassword").autocomplete = signup ? "new-password" : "current-password";
+            const usernameField = document.getElementById("authUsernameField");
+            usernameField.hidden = !signup;
+            document.getElementById("authUsername").required = signup;
             document.getElementById("authStatus").textContent = "";
         }
 
@@ -2144,7 +2149,10 @@ textarea { min-height: 105px; }
             const account = document.getElementById("authAccount");
             const email = user && user.email ? user.email : "";
             account.classList.toggle("visible", Boolean(email));
-            document.getElementById("authAccountEmail").textContent = email;
+            const username = user && user.username ? user.username : "";
+            const accountName = document.getElementById("authAccountName");
+            accountName.textContent = username || email;
+            accountName.title = email;
             const adminNav = document.getElementById("adminUsersNav");
             adminNav.hidden = !isAdmin;
             if (!isAdmin && document.getElementById("adminUsers").classList.contains("active")) {
@@ -2199,6 +2207,7 @@ textarea { min-height: 105px; }
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
+                        username: authMode === "signup" ? document.getElementById("authUsername").value.trim() : undefined,
                         email: document.getElementById("authEmail").value.trim(),
                         password: document.getElementById("authPassword").value
                     })
@@ -2242,15 +2251,16 @@ textarea { min-height: 105px; }
                 const data = await safeFetchJSON("/api/admin/users");
                 body.innerHTML = data.users.length ? data.users.map(user => `
                     <tr>
+                        <td>${escapeHTML(user.username || "Not set")}</td>
                         <td>${escapeHTML(user.email || "No email")}</td>
                         <td>${escapeHTML(adminDate(user.created_at))}</td>
                         <td>${escapeHTML(adminDate(user.last_sign_in_at))}</td>
                         <td>${user.email_confirmed_at ? "Verified" : "Pending"}</td>
                     </tr>
-                `).join("") : '<tr><td colspan="4">No registered users found.</td></tr>';
+                `).join("") : '<tr><td colspan="5">No registered users found.</td></tr>';
                 status.textContent = `${data.count} registered user${data.count === 1 ? "" : "s"}${data.truncated ? " (first 1,000 shown)" : ""}.`;
             } catch (error) {
-                body.innerHTML = `<tr><td colspan="4">${escapeHTML(error.message)}</td></tr>`;
+                body.innerHTML = `<tr><td colspan="5">${escapeHTML(error.message)}</td></tr>`;
                 status.textContent = "Could not load users.";
             }
         }

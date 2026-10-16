@@ -138,6 +138,39 @@ def is_admin_user(user):
     return bool(email and email in ADMIN_EMAILS)
 
 
+def auth_user_summary(user):
+    metadata = user.get("user_metadata") if isinstance(user.get("user_metadata"), dict) else {}
+    return {
+        "id": user.get("id"),
+        "email": user.get("email", ""),
+        "username": metadata.get("username", "")
+    }
+
+
+def signup_failure_message(status, payload):
+    message = ""
+    if isinstance(payload, dict):
+        message = str(payload.get("msg") or payload.get("message") or payload.get("error_description") or "").lower()
+
+    if status == 401 or status == 403:
+        return "Supabase rejected the Auth key. Check that SUPABASE_AUTH_KEY matches this project."
+    if status == 429:
+        return "Too many signup attempts. Wait a while, then try again."
+    if status is not None and status >= 500:
+        if any(term in message for term in ("email", "smtp", "mail")):
+            return "Supabase could not send the verification email. Check Auth logs and email/SMTP settings."
+        return "Supabase Auth is temporarily unavailable. Check Auth logs and try again later."
+    if any(term in message for term in ("already registered", "already exists", "already been registered")):
+        return "An account may already exist for this email. Try signing in instead."
+    if "password" in message and any(term in message for term in ("weak", "short", "least", "characters")):
+        return "The password does not meet Supabase Auth password requirements. Choose a stronger password."
+    if any(term in message for term in ("email", "smtp", "mail")):
+        return "Supabase rejected the email signup. Check Auth email settings and the Auth logs."
+    if status is None:
+        return "Could not reach Supabase Auth. Check the project URL and server configuration."
+    return f"Supabase rejected signup (HTTP {status}). Check Auth signup settings and the Auth logs."
+
+
 def set_auth_session(session):
     if isinstance(session, dict) and session.get("access_token") and session.get("refresh_token"):
         g.auth_session_to_set = session
@@ -395,6 +428,10 @@ When explaining a security issue:
 # ============================================================
 
 def get_user_id():
+
+    auth_user = getattr(g, "auth_user", None)
+    if isinstance(auth_user, dict) and auth_user.get("id"):
+        return str(auth_user["id"])
 
     user_id = request.cookies.get(
         "cyber_user_id"
@@ -1127,7 +1164,7 @@ def auth_session():
         return jsonify({
             "success": True,
             "authenticated": True,
-            "user": {"id": user["id"], "email": user.get("email", "")},
+            "user": auth_user_summary(user),
             "is_admin": is_admin_user(user)
         })
 
@@ -1147,7 +1184,7 @@ def auth_session():
         "auth_required": True,
         "authenticated": True,
         "is_admin": is_admin_user(user),
-        "user": {"id": user["id"], "email": user.get("email", "")}
+        "user": auth_user_summary(user)
     })
 
 
@@ -1163,23 +1200,33 @@ def auth_signup():
 
     email = payload.get("email")
     password = payload.get("password")
+    username = payload.get("username")
     if (
         not isinstance(email, str)
         or not isinstance(password, str)
+        or not isinstance(username, str)
         or "@" not in email
         or len(email) > 320
         or len(password) < 8
         or len(password) > 256
+        or not re.fullmatch(r"[A-Za-z0-9_.-]{3,24}", username)
     ):
-        return jsonify({"success": False, "error": "Enter a valid email and a password with at least 8 characters."}), 400
+        return jsonify({"success": False, "error": "Enter a valid email, a username of 3–24 letters/numbers/._-, and a password with at least 8 characters."}), 400
 
     status, result = supabase_auth_request(
         "POST",
         "signup",
-        {"email": email.strip().lower(), "password": password}
+        {
+            "email": email.strip().lower(),
+            "password": password,
+            "data": {"username": username.strip()}
+        }
     )
     if status not in (200, 201) or not isinstance(result, dict):
-        return jsonify({"success": False, "error": "Could not create the account. Check the email and Supabase Auth settings."}), 400
+        return jsonify({
+            "success": False,
+            "error": signup_failure_message(status, result)
+        }), 400
 
     set_auth_session(result)
     user = result.get("user") if isinstance(result.get("user"), dict) else {}
@@ -1187,7 +1234,7 @@ def auth_signup():
         "success": True,
         "authenticated": bool(result.get("access_token")),
         "is_admin": is_admin_user(user),
-        "user": {"id": user.get("id"), "email": user.get("email", "")},
+        "user": auth_user_summary(user),
         "message": "Account created. Check your email to verify it before signing in." if not result.get("access_token") else "Account created."
     }), 201
 
@@ -1221,7 +1268,7 @@ def auth_login():
         "success": True,
         "authenticated": True,
         "is_admin": is_admin_user(user),
-        "user": {"id": user.get("id"), "email": user.get("email", "")}
+        "user": auth_user_summary(user)
     })
 
 
@@ -1262,6 +1309,8 @@ def admin_list_users():
         for account in batch:
             if isinstance(account, dict):
                 users.append({
+                    "username": (account.get("user_metadata") or {}).get("username", "")
+                    if isinstance(account.get("user_metadata"), dict) else "",
                     "email": account.get("email", ""),
                     "created_at": account.get("created_at", ""),
                     "last_sign_in_at": account.get("last_sign_in_at", ""),
