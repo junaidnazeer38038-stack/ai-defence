@@ -18,6 +18,7 @@ import io
 import uuid
 import urllib.request
 import urllib.parse
+from werkzeug.utils import secure_filename
 from datetime import datetime
 
 
@@ -41,12 +42,23 @@ HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 
 app = Flask(__name__)
 
-CORS(
-    app,
-    supports_credentials=True
-)
+allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+if allowed_origins:
+    CORS(app, supports_credentials=True, origins=allowed_origins)
 
-app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", str(50 * 1024 * 1024)))
+
+
+@app.errorhandler(413)
+def request_too_large(_error):
+    return jsonify({
+        "success": False,
+        "error": "Upload is too large. Please choose a smaller file."
+    }), 413
 
 
 # ============================================================
@@ -206,6 +218,8 @@ if GROQ_API_KEY:
 GEMINI_MODEL = "gemini-3.8-flash"
 
 GROQ_MODEL = "openai/gpt-oss-20b"
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", GEMINI_MODEL).strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", GROQ_MODEL).strip()
 
 
 # ============================================================
@@ -727,10 +741,7 @@ def ask_gemini(prompt):
 
         except Exception as e:
 
-            print(
-                f"Gemini key {index} error:",
-                e
-            )
+            print(f"Gemini provider attempt {index} failed ({type(e).__name__}).")
 
     return None
 
@@ -788,10 +799,7 @@ def ask_groq(prompt):
 
     except Exception as e:
 
-        print(
-            "Groq error:",
-            e
-        )
+        print(f"Groq provider attempt failed ({type(e).__name__}).")
 
     return None
 
@@ -935,6 +943,9 @@ def chat():
                 "error": "Message is required."
             }), 400
 
+        if len(message) > 12000:
+            return jsonify({"success": False, "error": "Message must be 12,000 characters or fewer."}), 400
+
         answer, provider = ask_ai(
             message
         )
@@ -944,6 +955,8 @@ def chat():
             "success": True,
 
             "answer": answer,
+
+            "reply": answer,
 
             "response": answer,
 
@@ -1011,6 +1024,9 @@ def scan_url_api():
                 )
             }
 
+        if result.get("status") == "error":
+            return jsonify({"success": False, "error": result.get("message", "Invalid URL.")}), 400
+
         score = result.get(
             "risk_score",
             result.get(
@@ -1035,9 +1051,11 @@ def scan_url_api():
         result["risk_level"] = risk_level(
             score
         )
+        result["scanner_status"] = "suspicious" if score >= 30 else "low-risk"
         result["status"] = get_status(
             score
         )
+        result["details"] = result.get("message", "No additional details.")
 
         return jsonify({
 
@@ -1045,22 +1063,22 @@ def scan_url_api():
 
             "result": result,
 
+            # Top-level aliases keep the existing browser client compatible.
+            **result,
+
             "history_entry": entry
 
         })
 
     except Exception as e:
 
-        print(
-            "URL scan error:",
-            e
-        )
+        print(f"URL scan failed ({type(e).__name__}).")
 
         return jsonify({
 
             "success": False,
 
-            "error": str(e)
+            "error": "Unable to analyze this URL. Check its format and try again."
 
         }), 500
 
@@ -1088,23 +1106,26 @@ def scan_file():
                 "error": "Please select a file."
             }), 400
 
-        filename = uploaded.filename or "unknown"
+        filename = secure_filename(uploaded.filename or "unknown") or "unknown"
 
         filename_lower = filename.lower()
 
-        file_data = uploaded.read()
+        sha256_digest = hashlib.sha256()
+        md5_digest = hashlib.md5()
+        file_size = 0
+        signature = b""
+        while True:
+            chunk = uploaded.stream.read(1024 * 1024)
+            if not chunk:
+                break
+            if len(signature) < 4:
+                signature += chunk[:4 - len(signature)]
+            file_size += len(chunk)
+            sha256_digest.update(chunk)
+            md5_digest.update(chunk)
 
-        file_size = len(
-            file_data
-        )
-
-        sha256_hash = hashlib.sha256(
-            file_data
-        ).hexdigest()
-
-        md5_hash = hashlib.md5(
-            file_data
-        ).hexdigest()
+        sha256_hash = sha256_digest.hexdigest()
+        md5_hash = md5_digest.hexdigest()
 
         extension = os.path.splitext(
             filename_lower
@@ -1149,6 +1170,13 @@ def scan_file():
 
         indicators = []
 
+        signatures = {
+            "Windows executable": signature.startswith(b"MZ"),
+            "ELF executable": signature.startswith(b"\x7fELF"),
+            "Mach-O executable": signature in {b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe", b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe"},
+        }
+        detected_types = [name for name, matched in signatures.items() if matched]
+
         if extension in dangerous_extensions:
 
             score += 70
@@ -1170,6 +1198,15 @@ def scan_file():
             indicators.append(
                 "No dangerous file extension detected."
             )
+
+        if detected_types and extension not in dangerous_extensions:
+            score += 35
+            indicators.append("File content has an executable signature despite its extension.")
+
+        stem = os.path.splitext(filename_lower)[0]
+        if os.path.splitext(stem)[1] in dangerous_extensions and extension not in dangerous_extensions:
+            score += 25
+            indicators.append("Filename uses a potentially deceptive double extension.")
 
         if file_size == 0:
 
@@ -1195,7 +1232,11 @@ def scan_file():
 
             "file_name": filename,
 
+            "filename": filename,
+
             "file_size": file_size,
+
+            "size": f"{file_size / 1024:.2f} KB",
 
             "file_size_kb": round(
                 file_size / 1024,
@@ -1229,6 +1270,12 @@ def scan_file():
 
             "indicators": indicators,
 
+            "warnings": indicators,
+
+            "detected_content_types": detected_types,
+
+            "scan_scope": "Static metadata and signature heuristics only; no malware database or antivirus engine was used.",
+
             "safe": score < 30
 
         }
@@ -1247,16 +1294,15 @@ def scan_file():
 
             "result": result,
 
+            **result,
+
             "history_entry": entry
 
         })
 
     except Exception as e:
 
-        print(
-            "File scan error:",
-            e
-        )
+        print(f"File scan failed ({type(e).__name__}).")
 
         return jsonify({
 
@@ -1286,10 +1332,7 @@ def detect_phishing():
         text = str(
             data.get(
                 "text",
-                data.get(
-                    "url",
-                    ""
-                )
+                data.get("message", data.get("url", ""))
             )
         ).strip()
 
@@ -1299,6 +1342,9 @@ def detect_phishing():
                 "success": False,
                 "error": "URL or text is required."
             }), 400
+
+        if len(text) > 20000:
+            return jsonify({"success": False, "error": "Text must be 20,000 characters or fewer."}), 400
 
         lower_text = text.lower()
 
@@ -1340,15 +1386,28 @@ def detect_phishing():
             r"|www\.[^\s]+"
         )
 
-        urls = re.findall(
+        all_urls = re.findall(
             url_pattern,
             text,
             re.IGNORECASE
         )
+        urls = all_urls[:20]
+        if len(all_urls) > len(urls):
+            indicators.append("Only the first 20 links were analyzed.")
 
         if urls:
 
             for url in urls:
+
+                normalized_url = url.rstrip(".,;:!?)>")
+
+                url_result = scan_url(normalized_url)
+
+                url_score = clamp_score(url_result.get("risk_score", 0))
+
+                if url_score:
+                    score += min(25, url_score // 2)
+                    indicators.extend(url_result.get("warnings", []))
 
                 if "@" in url:
 
@@ -1390,6 +1449,8 @@ def detect_phishing():
 
             "risk_score": score,
 
+            "indicator_score": score,
+
             "risk_level": risk_level(
                 score
             ),
@@ -1417,6 +1478,8 @@ def detect_phishing():
             "success": True,
 
             "result": result,
+
+            **result,
 
             "history_entry": entry
 
@@ -1466,6 +1529,12 @@ def check_password():
             return jsonify({
                 "success": False,
                 "error": "Password is required."
+            }), 400
+
+        if len(password) > 1024:
+            return jsonify({
+                "success": False,
+                "error": "Password must be 1,024 characters or fewer."
             }), 400
 
         score = 0
@@ -1654,22 +1723,23 @@ def ip_domain_info():
 
             }), 400
 
-        target_clean = target
-
         target_clean = re.sub(
-            r"^https?://",
-            "",
-            target_clean,
-            flags=re.IGNORECASE
-        )
+            r"^https?://", "", target, flags=re.IGNORECASE
+        ).split("/", 1)[0].strip()
 
-        target_clean = target_clean.split(
-            "/"
-        )[0]
-
-        target_clean = target_clean.split(
-            ":"
-        )[0]
+        # Keep bare IPv6 literals intact. Bracketed IPv6 URLs may include a port;
+        # DNS names and IPv4 addresses may also be supplied with a port.
+        if target_clean.startswith("["):
+            closing_bracket = target_clean.find("]")
+            if closing_bracket < 0:
+                return jsonify({"success": False, "error": "Enter a valid IP address or domain."}), 400
+            target_clean = target_clean[1:closing_bracket]
+        else:
+            try:
+                ipaddress.ip_address(target_clean)
+            except ValueError:
+                if target_clean.count(":") == 1:
+                    target_clean = target_clean.rsplit(":", 1)[0]
 
         hostname = ""
 
@@ -1960,6 +2030,9 @@ def security_report():
             silent=True
         ) or {}
 
+        if isinstance(data.get("data"), dict):
+            data = data["data"]
+
         target = str(
             data.get(
                 "target",
@@ -1970,9 +2043,12 @@ def security_report():
         details = str(
             data.get(
                 "details",
-                ""
+                data.get("findings", "")
             )
         )
+
+        if len(target) > 300 or len(details) > 20000:
+            return jsonify({"success": False, "error": "Report target must be 300 characters or fewer and findings must be 20,000 characters or fewer."}), 400
 
         prompt = f"""
 Create a beginner-friendly defensive cybersecurity report.
@@ -2013,7 +2089,8 @@ Do not provide offensive instructions.
 
             "success": True,
 
-            "result": result
+            "result": result,
+            **result
 
         })
 
@@ -2315,6 +2392,12 @@ def security_dashboard():
             "recent_scans":
                 recent_scans,
 
+            "security_tips": [
+                "Use a unique password for every account and enable multi-factor authentication.",
+                "Open links by typing the known website address when a message feels urgent.",
+                "Keep your browser, operating system, and security software updated.",
+            ],
+
             "database":
                 (
                     "Supabase"
@@ -2357,6 +2440,8 @@ def security_dashboard():
 
             "recent_scans":
                 recent_scans,
+
+            "security_tips": dashboard["security_tips"],
 
             # Nested dashboard
             "dashboard":
@@ -2499,12 +2584,19 @@ def security_recommendations():
             silent=True
         ) or {}
 
-        context = str(
-            data.get(
-                "context",
-                "General cybersecurity"
-            )
-        )
+        if not isinstance(data, dict):
+            data = {}
+
+        context_parts = [
+            str(data.get(key, "")).strip()
+            for key in ("source", "target", "finding")
+            if data.get(key) is not None and str(data.get(key, "")).strip()
+        ]
+        context = str(data.get("context", "")).strip()
+        if not context:
+            context = "\n".join(context_parts) or "General cybersecurity"
+        if len(context) > 12000:
+            return jsonify({"success": False, "error": "Recommendation context must be 12,000 characters or fewer."}), 400
 
         prompt = f"""
 Give 8 practical defensive cybersecurity
@@ -2520,12 +2612,21 @@ Do not provide offensive instructions.
             prompt
         )
 
+        recommendations = [
+            re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip()
+            for line in answer.splitlines()
+        ]
+        recommendations = [item for item in recommendations if item]
+        if not recommendations and answer.strip():
+            recommendations = [answer.strip()]
+
         return jsonify({
 
             "success": True,
 
-            "recommendations":
-                answer,
+            "recommendations": recommendations,
+
+            "recommendations_text": answer,
 
             "provider":
                 provider
@@ -2565,6 +2666,9 @@ def report_pdf():
             silent=True
         ) or {}
 
+        if isinstance(data.get("report"), dict):
+            data = data["report"]
+
         target = str(
             data.get(
                 "target",
@@ -2575,7 +2679,7 @@ def report_pdf():
         content = str(
             data.get(
                 "content",
-                ""
+                data.get("report", "")
             )
         )
 
@@ -2633,9 +2737,15 @@ def report_pdf():
             )
         )
 
+        safe_target = (
+            target.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        )
+
         story.append(
             Paragraph(
-                f"<b>Target:</b> {target}",
+                f"<b>Target:</b> {safe_target}",
                 styles["BodyText"]
             )
         )
@@ -2803,7 +2913,7 @@ if __name__ == "__main__":
     )
 
     app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=True
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000")),
+        debug=os.getenv("FLASK_DEBUG", "false").lower() == "true"
     )

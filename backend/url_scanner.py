@@ -1,161 +1,120 @@
+"""Offline URL risk heuristics. This module never fetches the submitted URL."""
+
+import ipaddress
 import re
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlsplit
 
 
-def scan_url(url):
+MAX_URL_LENGTH = 4096
+SHORTENER_DOMAINS = {
+    "bit.ly", "cutt.ly", "is.gd", "ow.ly", "rb.gy", "shorturl.at",
+    "t.co", "tiny.cc", "tinyurl.com",
+}
+HIGH_RISK_TLDS = {"click", "country", "gq", "icu", "kim", "link", "loan", "men", "mom", "party", "rest", "top", "work", "zip"}
+BRANDS = {
+    "amazon", "apple", "facebook", "google", "instagram", "microsoft",
+    "netflix", "paypal", "spotify", "whatsapp",
+}
 
-    url = url.strip()
 
-    if not url:
-        return {
-            "status": "error",
-            "message": "URL is empty."
-        }
+def _risk_level(score):
+    if score >= 80:
+        return "Critical"
+    if score >= 60:
+        return "High"
+    if score >= 30:
+        return "Medium"
+    return "Low"
 
-    if not re.match(
-        r"^https?://",
-        url,
-        re.IGNORECASE
-    ):
-        url = "https://" + url
 
+def scan_url(value):
+    """Return a stable risk score and explainable indicators for a URL string."""
+    raw = str(value or "").strip()
+    if not raw:
+        return {"status": "error", "message": "URL is empty.", "risk_score": 0, "warnings": []}
+    if len(raw) > MAX_URL_LENGTH:
+        return {"status": "error", "message": "URL exceeds the 4096 character limit.", "risk_score": 0, "warnings": []}
+    if any(ord(char) < 32 or ord(char) == 127 for char in raw):
+        return {"status": "error", "message": "URL contains control characters.", "risk_score": 0, "warnings": []}
+
+    candidate = raw if re.match(r"^[a-z][a-z0-9+.-]*://", raw, re.I) else "https://" + raw
     try:
-
-        parsed = urlparse(url)
-
-        if not parsed.netloc:
-
-            return {
-                "status": "error",
-                "message": "Invalid URL."
-            }
-
+        parsed = urlsplit(candidate)
         hostname = parsed.hostname
+        # Accessing .port validates malformed or out-of-range ports.
+        port = parsed.port
+    except ValueError:
+        return {"status": "error", "message": "Enter a valid HTTP or HTTPS URL.", "risk_score": 0, "warnings": []}
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc or not hostname:
+        return {"status": "error", "message": "Enter a valid HTTP or HTTPS URL.", "risk_score": 0, "warnings": []}
 
-        if not hostname:
+    warnings = []
+    score = 0
 
-            return {
-                "status": "error",
-                "message": "Unable to read domain."
-            }
+    def flag(points, message):
+        nonlocal score
+        score += points
+        warnings.append(message)
 
-        warnings = []
+    if parsed.scheme.lower() == "http":
+        flag(15, "The URL does not use HTTPS.")
+    if parsed.username is not None or parsed.password is not None:
+        flag(35, "The URL embeds user information before the hostname.")
 
-        # HTTPS check
-        if parsed.scheme.lower() != "https":
-            warnings.append(
-                "The URL does not use HTTPS."
-            )
-
-        # IP address check
-        if re.match(
-            r"^\d{1,3}(\.\d{1,3}){3}$",
-            hostname
-        ):
-            warnings.append(
-                "The URL uses an IP address instead of a domain name."
-            )
-
-        # Suspicious URL patterns
-        suspicious_words = [
-            "login",
-            "verify",
-            "account",
-            "password",
-            "secure",
-            "update",
-            "confirm",
-            "wallet",
-            "payment"
-        ]
-
-        lower_url = url.lower()
-
-        found_words = []
-
-        for word in suspicious_words:
-
-            if word in lower_url:
-                found_words.append(word)
-
-        if found_words:
-
-            warnings.append(
-                "Security-related keywords detected: "
-                + ", ".join(found_words)
-            )
-
-        # Very long URL
-        if len(url) > 200:
-
-            warnings.append(
-                "The URL is unusually long."
-            )
-
-        # @ symbol
-        if "@" in url:
-
-            warnings.append(
-                "The URL contains an @ symbol."
-            )
-
-        # Too many subdomains
-        parts = hostname.split(".")
-
-        if len(parts) > 4:
-
-            warnings.append(
-                "The domain contains many subdomains."
-            )
-
-        if warnings:
-
-            status = "suspicious"
-
-            message = (
-                "Potentially suspicious indicators "
-                "were detected. Review the URL carefully."
-            )
-
+    host = hostname.rstrip(".").lower()
+    try:
+        address = ipaddress.ip_address(host)
+        if not address.is_global:
+            flag(30, "The URL points to a non-public IP address.")
         else:
+            flag(20, "The URL uses a raw IP address instead of a domain name.")
+    except ValueError:
+        labels = host.split(".")
+        if len(labels) < 2 or any(not label for label in labels):
+            return {"status": "error", "message": "Enter a valid hostname.", "risk_score": 0, "warnings": []}
+        try:
+            ascii_host = host.encode("idna").decode("ascii")
+        except UnicodeError:
+            ascii_host = host
+        if "xn--" in ascii_host:
+            flag(25, "The hostname uses internationalized (punycode) characters.")
+        if len(labels) > 4:
+            flag(10, "The domain contains many subdomains.")
+        if labels[-1] in HIGH_RISK_TLDS:
+            flag(15, "The domain uses a top-level domain commonly seen in abuse.")
+        registrable = labels[-2] if len(labels) >= 2 else labels[0]
+        for brand in BRANDS:
+            if brand in registrable and registrable != brand:
+                flag(25, f"The hostname contains a brand name in an unexpected domain label ({brand}).")
+                break
+        if host in SHORTENER_DOMAINS:
+            flag(15, "The URL uses a link-shortening service that hides its destination.")
 
-            status = "low-risk"
+    decoded = unquote(candidate)
+    lowered = decoded.lower()
+    if len(candidate) > 200:
+        flag(10, "The URL is unusually long.")
+    if "\\" in candidate:
+        flag(15, "The URL contains backslashes that can make its destination ambiguous.")
+    if "%00" in candidate.lower() or re.search(r"%0[ad]", candidate, re.I):
+        flag(10, "The URL contains encoded control characters.")
+    if port and port not in {80, 443}:
+        flag(5, "The URL specifies a non-standard port.")
 
-            message = (
-                "No basic suspicious indicators "
-                "were detected."
-            )
+    suspicious_words = ("account", "billing", "confirm", "credential", "password", "payment", "recover", "signin", "verify", "wallet")
+    found_words = [word for word in suspicious_words if re.search(rf"(?<![a-z]){word}(?![a-z])", lowered)]
+    if found_words:
+        flag(min(20, 5 * len(found_words)), "Security-related words appear in the URL: " + ", ".join(found_words) + ".")
 
-        return {
-
-            "status":
-                status,
-
-            "url":
-                url,
-
-            "domain":
-                hostname,
-
-            "protocol":
-                parsed.scheme,
-
-            "warnings":
-                warnings,
-
-            "message":
-                message
-
-        }
-
-    except Exception as e:
-
-        return {
-
-            "status":
-                "error",
-
-            "message":
-                "Unable to analyze the URL."
-
-        }
+    score = min(100, score)
+    status = "suspicious" if score >= 30 else "low-risk"
+    return {
+        "status": status,
+        "url": candidate,
+        "domain": host,
+        "protocol": parsed.scheme.lower(),
+        "risk_score": score,
+        "risk_level": _risk_level(score),
+        "warnings": warnings,
+        "message": "Potentially suspicious indicators were detected. Review the destination carefully." if warnings else "No basic suspicious indicators were detected.",
+    }

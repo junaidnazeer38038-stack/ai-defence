@@ -931,6 +931,17 @@ textarea { min-height: 105px; }
     #chat .message { max-width: 90%; }
 }
 
+@media (max-width: 560px) {
+    .topbar { gap: 8px; }
+    .page-heading h1 { font-size: 15px; }
+    .page-heading p { max-width: 54vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .content { padding: 12px; }
+    .card { padding: 14px; }
+    .button-row { flex-wrap: wrap; }
+    .button-row .btn { flex: 1 1 140px; }
+    .history-table { min-width: 620px; }
+}
+
     </style>
 </head>
 
@@ -1779,31 +1790,31 @@ textarea { min-height: 105px; }
         ========================================================= */
 
         async function safeFetchJSON(url, options = {}) {
-
-            const response = await fetch(url, options);
-
-            const text = await response.text();
-
-            let data;
-
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 30000);
             try {
-                data = JSON.parse(text);
+                const response = await fetch(url, {
+                    ...options,
+                    signal: options.signal || controller.signal
+                });
+                const text = await response.text();
+                let data;
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (error) {
+                    throw new Error("Server returned an invalid response (HTTP " + response.status + ").");
+                }
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || "Request failed (HTTP " + response.status + ").");
+                }
+                return data;
             } catch (error) {
-                throw new Error(
-                    "Server returned an invalid response. HTTP " +
-                    response.status
-                );
+                if (error.name === "AbortError") throw new Error("The request timed out. Please try again.");
+                if (error instanceof TypeError) throw new Error("Unable to reach the server. Check your connection and try again.");
+                throw error;
+            } finally {
+                window.clearTimeout(timeout);
             }
-
-            if (!response.ok) {
-                throw new Error(
-                    data.error ||
-                    data.message ||
-                    "Request failed."
-                );
-            }
-
-            return data;
         }
 
 
@@ -2065,7 +2076,7 @@ textarea { min-height: 105px; }
                         <div class="message-label">
                             ${escapeHTML(data.provider || "AI")}
                         </div>
-                        ${escapeHTML(data.reply || "No response received.")}
+                        ${escapeHTML(data.answer || data.reply || "No response received.")}
                     </div>
                 `;
 
@@ -2089,6 +2100,14 @@ textarea { min-height: 105px; }
            RISK TOOLS
         ========================================================= */
 
+        function explainRiskFromButton(button) {
+            explainRisk(button.dataset.source, button.dataset.target, JSON.parse(button.dataset.finding || "{}"));
+        }
+
+        function recommendationsFromButton(button) {
+            getRecommendations(button.dataset.source, button.dataset.target, JSON.parse(button.dataset.finding || "{}"));
+        }
+
         function riskToolsHTML(data, source, target) {
 
             return `
@@ -2099,24 +2118,20 @@ textarea { min-height: 105px; }
 
                     <button
                         class="btn btn-secondary"
-                        onclick='explainRisk(${JSON.stringify(
-                            source
-                        )}, ${JSON.stringify(
-                            target
-                        )}, ${JSON.stringify(data)
-                        })'
+                        onclick="explainRiskFromButton(this)"
+                        data-source="${escapeHTML(source)}"
+                        data-target="${escapeHTML(target)}"
+                        data-finding="${escapeHTML(JSON.stringify(data))}"
                     >
                         💡 Why is this risky?
                     </button>
 
                     <button
                         class="btn btn-secondary"
-                        onclick='getRecommendations(${JSON.stringify(
-                            source
-                        )}, ${JSON.stringify(
-                            target
-                        )}, ${JSON.stringify(data)
-                        })'
+                        onclick="recommendationsFromButton(this)"
+                        data-source="${escapeHTML(source)}"
+                        data-target="${escapeHTML(target)}"
+                        data-finding="${escapeHTML(JSON.stringify(data))}"
                     >
                         🧠 Smart Recommendations
                     </button>
@@ -2293,6 +2308,11 @@ textarea { min-height: 105px; }
                         )}</span>
                     </div>
 
+                    <div class="result-line">
+                        <span>Scan scope</span>
+                        <span>${escapeHTML(data.scan_scope || "Static heuristic analysis")}</span>
+                    </div>
+
                 `;
 
             } catch (error) {
@@ -2366,6 +2386,11 @@ textarea { min-height: 105px; }
                     )}
 
                     <div class="result-line">
+                        <span>Verdict</span>
+                        <span>${escapeHTML(data.verdict || "Review indicators")}</span>
+                    </div>
+
+                    <div class="result-line">
                         <span>Risk Level</span>
                         <span>${escapeHTML(data.risk_level)}</span>
                     </div>
@@ -2382,7 +2407,7 @@ textarea { min-height: 105px; }
 
                     <div class="result-line">
                         <span>AI Analysis</span>
-                        <span>${escapeHTML(data.ai_analysis || "Not available")}</span>
+                        <span>Rule-based analysis; no message was sent to an AI provider.</span>
                     </div>
 
                 `;
@@ -2428,6 +2453,11 @@ textarea { min-height: 105px; }
                 return;
             }
 
+            if (password.length > 1024) {
+                alert("Password must be 1,024 characters or fewer.");
+                return;
+            }
+
             result.className = "result show";
 
             result.innerHTML = `
@@ -2439,25 +2469,39 @@ textarea { min-height: 105px; }
 
             try {
 
-                const data = await safeFetchJSON(
-                    "/api/check-password",
-                    {
-                        method: "POST",
+                let strengthScore = 0;
+                const checks = [];
 
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
+                if (password.length >= 8) {
+                    strengthScore += 20;
+                    checks.push("Good length.");
+                } else {
+                    checks.push("Use at least 8 characters.");
+                }
+                if (password.length >= 12) strengthScore += 15;
+                if (/[A-Z]/.test(password)) {
+                    strengthScore += 15;
+                    checks.push("Contains uppercase letters.");
+                } else {
+                    checks.push("Add uppercase letters.");
+                }
+                if (/[a-z]/.test(password)) strengthScore += 15;
+                if (/\d/.test(password)) {
+                    strengthScore += 15;
+                    checks.push("Contains numbers.");
+                } else {
+                    checks.push("Add numbers.");
+                }
+                if (/[^A-Za-z0-9]/.test(password)) {
+                    strengthScore += 20;
+                    checks.push("Contains special characters.");
+                } else {
+                    checks.push("Add special characters.");
+                }
 
-                        body: JSON.stringify({
-                            password: password
-                        })
-                    }
-                );
-
-                const strengthScore =
-                    Math.round(
-                        (Number(data.score) || 0) / 6 * 100
-                    );
+                const strength = strengthScore >= 80 ? "Very Strong"
+                    : strengthScore >= 60 ? "Strong"
+                    : strengthScore >= 40 ? "Medium" : "Weak";
 
                 const riskScore =
                     100 - strengthScore;
@@ -2470,7 +2514,7 @@ textarea { min-height: 105px; }
 
                     <div class="result-line">
                         <span>Strength</span>
-                        <span>${escapeHTML(data.strength)}</span>
+                        <span>${escapeHTML(strength)}</span>
                     </div>
 
                     <div class="result-line">
@@ -2481,9 +2525,7 @@ textarea { min-height: 105px; }
                     <div class="result-line">
                         <span>Feedback</span>
                         <span>${escapeHTML(
-                            Array.isArray(data.feedback)
-                                ? data.feedback.join(", ")
-                                : data.feedback || "Good."
+                            checks.join(" ")
                         )}</span>
                     </div>
 
@@ -2556,11 +2598,13 @@ textarea { min-height: 105px; }
 
                 const info = data.result || data;
 
+                const riskInfo = { ...info, risk_score: info.risk_score ?? 0 };
+
                 result.innerHTML = `
 
                     <h4>🌐 Network Information</h4>
 
-                    ${riskToolsHTML(data, "ip-domain", target)}
+                    ${riskToolsHTML(riskInfo, "ip-domain", target)}
 
                     <div class="result-line">
                         <span>Target</span>
@@ -2579,17 +2623,17 @@ textarea { min-height: 105px; }
 
                     <div class="result-line">
                         <span>Hostname</span>
-                        <span>${escapeHTML(data.hostname)}</span>
+                        <span>${escapeHTML(info.hostname)}</span>
                     </div>
 
                     <div class="result-line">
                         <span>Reverse DNS</span>
-                        <span>${escapeHTML(data.reverse_dns)}</span>
+                        <span>${escapeHTML(info.reverse_dns)}</span>
                     </div>
 
                     <div class="result-line">
                         <span>Network Type</span>
-                        <span>${escapeHTML(data.network_type)}</span>
+                        <span>${escapeHTML(info.network_type)}</span>
                     </div>
 
                     <div style="
@@ -3231,9 +3275,7 @@ textarea { min-height: 105px; }
                 document.getElementById(
                     "highRisks"
                 ).textContent =
-                    data.high_risk ??
-                    data.highRisks ??
-                    0;
+                    (Number(data.high_risk) || 0) + (Number(data.critical_risk) || 0);
 
                 document.getElementById(
                     "avgRisk"
@@ -3335,11 +3377,9 @@ textarea { min-height: 105px; }
                 }
 
             } catch (error) {
-
-                console.error(
-                    "Dashboard error:",
-                    error
-                );
+                document.getElementById("recentScans").innerHTML = `
+                    <div class="alert"><div class="alert-title">Dashboard unavailable</div><p>${escapeHTML(error.message)}</p></div>
+                `;
             }
         }
 
