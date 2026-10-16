@@ -422,6 +422,27 @@
         .feedback-item-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
         .feedback-comment { color: var(--text); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 
+        .auth-overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 20px; background: rgba(3, 10, 20, .94); backdrop-filter: blur(12px); }
+        .auth-overlay[hidden] { display: none; }
+        #adminUsersNav[hidden] { display: none; }
+        .auth-card { width: min(100%, 440px); padding: 28px; border: 1px solid var(--border); border-radius: 18px; background: var(--card); box-shadow: var(--shadow); }
+        .auth-card h2 { margin: 0 0 8px; font-size: 24px; }
+        .auth-card > p { margin-bottom: 20px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+        .auth-form { display: grid; gap: 13px; }
+        .auth-form label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; }
+        .auth-form input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--input); color: var(--text); }
+        .auth-switch { width: 100%; margin-top: 15px; border: 0; background: transparent; color: var(--primary); cursor: pointer; font-size: 12px; }
+        .auth-status { min-height: 20px; margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+        .auth-account { display: none; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
+        .auth-account.visible { display: flex; }
+        .auth-account-email { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .auth-signout { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); cursor: pointer; font-size: 11px; }
+        .admin-table-wrap { overflow-x: auto; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .admin-table th, .admin-table td { padding: 11px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+        .admin-table th { color: var(--muted); }
+        @media (max-width: 560px) { .auth-card { padding: 22px; } .auth-account-email { max-width: 90px; } }
+
         /* ================= STAT CARDS ================= */
 
         .stat-card {
@@ -1046,6 +1067,21 @@ textarea { min-height: 105px; }
 
 <body>
 
+    <div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <div class="auth-card">
+            <div class="brand-icon" style="margin-bottom:16px;">&#128737;</div>
+            <h2 id="authTitle">Sign in</h2>
+            <p id="authDescription">Sign in to use the Cyber Security AI workspace.</p>
+            <form class="auth-form" id="authForm" onsubmit="submitAuthForm(event)">
+                <label>Email address<input id="authEmail" type="email" autocomplete="email" maxlength="320" required></label>
+                <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" maxlength="256" required></label>
+                <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
+            </form>
+            <button class="auth-switch" id="authSwitch" type="button" onclick="toggleAuthMode()">New here? Create an account</button>
+            <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
+        </div>
+    </div>
+
     <!-- ================= SIDEBAR ================= -->
 
     <aside class="sidebar" id="sidebar">
@@ -1085,6 +1121,11 @@ textarea { min-height: 105px; }
         <button class="nav-btn" onclick="showPage('feedback', this)">
             <span class="nav-icon">&#11088;</span>
             Community Feedback
+        </button>
+
+        <button class="nav-btn" id="adminUsersNav" hidden onclick="showPage('adminUsers', this)">
+            <span class="nav-icon">&#128100;</span>
+            Admin: Users
         </button>
 
         <div class="menu-title">Project</div>
@@ -1127,6 +1168,10 @@ textarea { min-height: 105px; }
                 <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">
                     ☀️
                 </button>
+                <div class="auth-account" id="authAccount">
+                    <span class="auth-account-email" id="authAccountEmail"></span>
+                    <button class="auth-signout" type="button" onclick="signOut()">Sign out</button>
+                </div>
             </div>
 
         </header>
@@ -1945,6 +1990,19 @@ textarea { min-height: 105px; }
 
             </div>
 
+            <div class="page" id="adminUsers">
+                <div class="card">
+                    <div class="card-title"><h3>Registered users</h3><button class="btn btn-secondary" type="button" onclick="loadAdminUsers()">Refresh</button></div>
+                    <p class="feedback-meta" id="adminUsersStatus" role="status" aria-live="polite">Only the configured administrator can view this list.</p>
+                    <div class="admin-table-wrap" style="margin-top:14px;">
+                        <table class="admin-table">
+                            <thead><tr><th>Email</th><th>Joined</th><th>Last sign in</th><th>Email verified</th></tr></thead>
+                            <tbody id="adminUsersBody"><tr><td colspan="4">Open this page to load users.</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </section>
 
     </main>
@@ -2021,6 +2079,11 @@ textarea { min-height: 105px; }
             about: [
                 "About Project",
                 "Cyber Security AI project information"
+            ],
+
+            adminUsers: [
+                "Registered Users",
+                "Administrator-only account directory"
             ]
 
         };
@@ -2055,6 +2118,140 @@ textarea { min-height: 105px; }
                 throw error;
             } finally {
                 window.clearTimeout(timeout);
+            }
+        }
+
+        let authMode = "login";
+        let authIsRequired = false;
+
+        function toggleAuthMode() {
+            authMode = authMode === "login" ? "signup" : "login";
+            const signup = authMode === "signup";
+            document.getElementById("authTitle").textContent = signup ? "Create your account" : "Sign in";
+            document.getElementById("authDescription").textContent = signup
+                ? "Create an account with your email. We will send a verification link before sign-in."
+                : "Sign in to use the Cyber Security AI workspace.";
+            document.getElementById("authSubmit").textContent = signup ? "Create account" : "Sign in";
+            document.getElementById("authSwitch").textContent = signup
+                ? "Already registered? Sign in"
+                : "New here? Create an account";
+            document.getElementById("authPassword").autocomplete = signup ? "new-password" : "current-password";
+            document.getElementById("authStatus").textContent = "";
+        }
+
+        function showAuthenticatedUser(user, isAdmin) {
+            document.getElementById("authOverlay").hidden = true;
+            const account = document.getElementById("authAccount");
+            const email = user && user.email ? user.email : "";
+            account.classList.toggle("visible", Boolean(email));
+            document.getElementById("authAccountEmail").textContent = email;
+            const adminNav = document.getElementById("adminUsersNav");
+            adminNav.hidden = !isAdmin;
+            if (!isAdmin && document.getElementById("adminUsers").classList.contains("active")) {
+                showPage("workspace");
+            }
+        }
+
+        function requireSignIn(message) {
+            document.getElementById("authOverlay").hidden = false;
+            document.getElementById("authAccount").classList.remove("visible");
+            document.getElementById("adminUsersNav").hidden = true;
+            if (message) document.getElementById("authStatus").textContent = message;
+        }
+
+        async function initializeAuth() {
+            try {
+                const fragment = new URLSearchParams(window.location.hash.slice(1));
+                const accessToken = fragment.get("access_token");
+                const refreshToken = fragment.get("refresh_token");
+                if (accessToken || refreshToken) {
+                    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+                    if (accessToken && refreshToken) {
+                        await safeFetchJSON("/api/auth/session", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken })
+                        });
+                        document.getElementById("authStatus").textContent = "Email verified. You are signed in.";
+                    }
+                }
+
+                const session = await safeFetchJSON("/api/auth/session");
+                authIsRequired = Boolean(session.auth_required);
+                if (!authIsRequired || session.authenticated) {
+                    showAuthenticatedUser(session.user, session.is_admin);
+                } else {
+                    requireSignIn();
+                }
+            } catch (error) {
+                requireSignIn("Could not check sign-in status. " + error.message);
+            }
+        }
+
+        async function submitAuthForm(event) {
+            event.preventDefault();
+            const status = document.getElementById("authStatus");
+            const button = document.getElementById("authSubmit");
+            status.textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
+            button.disabled = true;
+            try {
+                const data = await safeFetchJSON(authMode === "signup" ? "/api/auth/signup" : "/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: document.getElementById("authEmail").value.trim(),
+                        password: document.getElementById("authPassword").value
+                    })
+                });
+                if (authMode === "signup" && !data.authenticated) {
+                    status.textContent = data.message || "Check your inbox for the email verification link.";
+                    return;
+                }
+                if (data.authenticated) {
+                    showAuthenticatedUser(data.user, data.is_admin);
+                    document.getElementById("authPassword").value = "";
+                    status.textContent = "Signed in.";
+                } else {
+                    status.textContent = data.message || "Account created. Verify your email, then sign in.";
+                }
+            } catch (error) {
+                status.textContent = error.message;
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function signOut() {
+            try { await safeFetchJSON("/api/auth/logout", { method: "POST" }); }
+            catch (error) { console.warn("Sign-out request did not complete."); }
+            document.getElementById("authPassword").value = "";
+            requireSignIn("You have signed out.");
+        }
+
+        function adminDate(value) {
+            if (!value) return "Never";
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
+        }
+
+        async function loadAdminUsers() {
+            const status = document.getElementById("adminUsersStatus");
+            const body = document.getElementById("adminUsersBody");
+            status.textContent = "Loading registered users…";
+            try {
+                const data = await safeFetchJSON("/api/admin/users");
+                body.innerHTML = data.users.length ? data.users.map(user => `
+                    <tr>
+                        <td>${escapeHTML(user.email || "No email")}</td>
+                        <td>${escapeHTML(adminDate(user.created_at))}</td>
+                        <td>${escapeHTML(adminDate(user.last_sign_in_at))}</td>
+                        <td>${user.email_confirmed_at ? "Verified" : "Pending"}</td>
+                    </tr>
+                `).join("") : '<tr><td colspan="4">No registered users found.</td></tr>';
+                status.textContent = `${data.count} registered user${data.count === 1 ? "" : "s"}${data.truncated ? " (first 1,000 shown)" : ""}.`;
+            } catch (error) {
+                body.innerHTML = `<tr><td colspan="4">${escapeHTML(error.message)}</td></tr>`;
+                status.textContent = "Could not load users.";
             }
         }
 
@@ -2105,6 +2302,10 @@ textarea { min-height: 105px; }
 
             if (pageId === "feedback") {
                 loadFeedback();
+            }
+
+            if (pageId === "adminUsers") {
+                loadAdminUsers();
             }
 
             document.getElementById("sidebar").classList.remove("open");
@@ -3775,6 +3976,7 @@ textarea { min-height: 105px; }
             () => {
 
                 loadTheme();
+                initializeAuth();
 
                 console.log(
                     "Cyber Security AI frontend loaded."

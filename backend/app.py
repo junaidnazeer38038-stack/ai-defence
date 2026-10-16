@@ -76,12 +76,129 @@ SUPABASE_KEY = (
     or os.getenv("SUPABASE_KEY", "")
 ).strip()
 
+SUPABASE_AUTH_KEY = (
+    os.getenv("SUPABASE_AUTH_KEY")
+    or os.getenv("SUPABASE_ANON_KEY", "")
+).strip()
+
+ADMIN_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv("SUPABASE_ADMIN_EMAILS", "").split(",")
+    if email.strip()
+}
+
 
 def supabase_enabled():
     return bool(
         SUPABASE_URL and
         SUPABASE_KEY
     )
+
+
+def supabase_auth_enabled():
+    return bool(SUPABASE_URL and SUPABASE_AUTH_KEY)
+
+
+def supabase_auth_request(method, endpoint, data=None, access_token=None, admin=False):
+    api_key = SUPABASE_KEY if admin else SUPABASE_AUTH_KEY
+    if not SUPABASE_URL or not api_key:
+        return None, {}
+
+    body = json.dumps(data).encode("utf-8") if data is not None else None
+    req = urllib.request.Request(
+        SUPABASE_URL + "/auth/v1/" + endpoint,
+        data=body,
+        method=method
+    )
+    req.add_header("apikey", api_key)
+    req.add_header("Content-Type", "application/json")
+
+    if access_token:
+        req.add_header("Authorization", f"Bearer {access_token}")
+    elif admin:
+        req.add_header("Authorization", f"Bearer {SUPABASE_KEY}")
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            raw = response.read().decode("utf-8")
+            return response.status, json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as error:
+        raw = error.read().decode("utf-8", errors="replace")
+        try:
+            payload = json.loads(raw) if raw else {}
+        except ValueError:
+            payload = {}
+        return error.code, payload
+    except Exception:
+        return None, {}
+
+
+def is_admin_user(user):
+    email = str(user.get("email", "")).strip().lower()
+    return bool(email and email in ADMIN_EMAILS)
+
+
+def set_auth_session(session):
+    if isinstance(session, dict) and session.get("access_token") and session.get("refresh_token"):
+        g.auth_session_to_set = session
+
+
+def get_current_auth_user():
+    if not supabase_auth_enabled():
+        return None
+
+    access_token = request.cookies.get("cyber_access_token", "")
+    refresh_token = request.cookies.get("cyber_refresh_token", "")
+
+    if access_token:
+        status, user = supabase_auth_request(
+            "GET", "user", access_token=access_token
+        )
+        if status == 200 and isinstance(user, dict) and user.get("id"):
+            return user
+
+    if refresh_token:
+        status, session = supabase_auth_request(
+            "POST",
+            "token?grant_type=refresh_token",
+            {"refresh_token": refresh_token}
+        )
+        if status == 200 and isinstance(session, dict):
+            set_auth_session(session)
+            user = session.get("user")
+            if isinstance(user, dict) and user.get("id"):
+                return user
+
+    if access_token or refresh_token:
+        g.clear_auth_session = True
+    return None
+
+
+@app.before_request
+def require_authenticated_user():
+    if (
+        not request.path.startswith("/api/")
+        or request.method == "OPTIONS"
+        or request.path in {
+            "/api/status",
+            "/api/auth/session",
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/logout"
+        }
+        or not supabase_auth_enabled()
+    ):
+        return None
+
+    user = get_current_auth_user()
+    if not user:
+        return jsonify({
+            "success": False,
+            "error": "Sign in to use this security tool."
+        }), 401
+
+    g.auth_user = user
+    return None
 
 
 def supabase_headers():
@@ -661,6 +778,31 @@ def set_user_cookie(response):
             secure=request.is_secure
         )
 
+    secure_cookie = request.is_secure or os.getenv("VERCEL") == "1"
+
+    auth_session = getattr(g, "auth_session_to_set", None)
+    if auth_session:
+        response.set_cookie(
+            "cyber_access_token",
+            auth_session["access_token"],
+            max_age=max(60, int(auth_session.get("expires_in", 3600))),
+            httponly=True,
+            secure=secure_cookie,
+            samesite="Lax"
+        )
+        response.set_cookie(
+            "cyber_refresh_token",
+            auth_session["refresh_token"],
+            max_age=60 * 60 * 24 * 365,
+            httponly=True,
+            secure=secure_cookie,
+            samesite="Lax"
+        )
+
+    if getattr(g, "clear_auth_session", False):
+        response.delete_cookie("cyber_access_token", httponly=True, secure=secure_cookie, samesite="Lax")
+        response.delete_cookie("cyber_refresh_token", httponly=True, secure=secure_cookie, samesite="Lax")
+
     return response
 
 
@@ -940,6 +1082,201 @@ def frontend_files(path):
 # ============================================================
 # STATUS
 # ============================================================
+
+@app.route("/api/auth/session", methods=["GET", "POST"])
+def auth_session():
+
+    if not supabase_auth_enabled():
+        return jsonify({
+            "success": True,
+            "auth_required": False,
+            "authenticated": True,
+            "is_admin": False,
+            "user": None
+        })
+
+    if request.method == "POST":
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"success": False, "error": "Invalid confirmation session."}), 400
+
+        access_token = payload.get("access_token")
+        refresh_token = payload.get("refresh_token")
+        if (
+            not isinstance(access_token, str)
+            or not isinstance(refresh_token, str)
+            or not access_token
+            or not refresh_token
+            or len(access_token) > 8192
+            or len(refresh_token) > 4096
+        ):
+            return jsonify({"success": False, "error": "Invalid confirmation session."}), 400
+
+        status, user = supabase_auth_request(
+            "GET", "user", access_token=access_token
+        )
+        if status != 200 or not isinstance(user, dict) or not user.get("id"):
+            return jsonify({"success": False, "error": "Email confirmation could not be verified."}), 401
+
+        set_auth_session({
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "expires_in": 3600,
+            "user": user
+        })
+        return jsonify({
+            "success": True,
+            "authenticated": True,
+            "user": {"id": user["id"], "email": user.get("email", "")},
+            "is_admin": is_admin_user(user)
+        })
+
+    user = get_current_auth_user()
+    if not user:
+        return jsonify({
+            "success": True,
+            "auth_required": True,
+            "authenticated": False,
+            "is_admin": False,
+            "user": None
+        })
+
+    g.auth_user = user
+    return jsonify({
+        "success": True,
+        "auth_required": True,
+        "authenticated": True,
+        "is_admin": is_admin_user(user),
+        "user": {"id": user["id"], "email": user.get("email", "")}
+    })
+
+
+@app.route("/api/auth/signup", methods=["POST"])
+def auth_signup():
+
+    if not supabase_auth_enabled():
+        return jsonify({"success": False, "error": "Sign-up is not configured yet."}), 503
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"success": False, "error": "Enter an email address and password."}), 400
+
+    email = payload.get("email")
+    password = payload.get("password")
+    if (
+        not isinstance(email, str)
+        or not isinstance(password, str)
+        or "@" not in email
+        or len(email) > 320
+        or len(password) < 8
+        or len(password) > 256
+    ):
+        return jsonify({"success": False, "error": "Enter a valid email and a password with at least 8 characters."}), 400
+
+    status, result = supabase_auth_request(
+        "POST",
+        "signup",
+        {"email": email.strip().lower(), "password": password}
+    )
+    if status not in (200, 201) or not isinstance(result, dict):
+        return jsonify({"success": False, "error": "Could not create the account. Check the email and Supabase Auth settings."}), 400
+
+    set_auth_session(result)
+    user = result.get("user") if isinstance(result.get("user"), dict) else {}
+    return jsonify({
+        "success": True,
+        "authenticated": bool(result.get("access_token")),
+        "is_admin": is_admin_user(user),
+        "user": {"id": user.get("id"), "email": user.get("email", "")},
+        "message": "Account created. Check your email to verify it before signing in." if not result.get("access_token") else "Account created."
+    }), 201
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def auth_login():
+
+    if not supabase_auth_enabled():
+        return jsonify({"success": False, "error": "Login is not configured yet."}), 503
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"success": False, "error": "Enter your email and password."}), 400
+
+    email = payload.get("email")
+    password = payload.get("password")
+    if not isinstance(email, str) or not isinstance(password, str) or not email.strip() or not password:
+        return jsonify({"success": False, "error": "Enter your email and password."}), 400
+
+    status, session = supabase_auth_request(
+        "POST",
+        "token?grant_type=password",
+        {"email": email.strip().lower(), "password": password}
+    )
+    if status != 200 or not isinstance(session, dict) or not session.get("access_token"):
+        return jsonify({"success": False, "error": "Email or password is incorrect, or email verification is still required."}), 401
+
+    set_auth_session(session)
+    user = session.get("user") if isinstance(session.get("user"), dict) else {}
+    return jsonify({
+        "success": True,
+        "authenticated": True,
+        "is_admin": is_admin_user(user),
+        "user": {"id": user.get("id"), "email": user.get("email", "")}
+    })
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def auth_logout():
+
+    access_token = request.cookies.get("cyber_access_token", "")
+    if access_token and supabase_auth_enabled():
+        supabase_auth_request("POST", "logout", access_token=access_token)
+
+    g.clear_auth_session = True
+    return jsonify({"success": True, "message": "Signed out."})
+
+
+@app.route("/api/admin/users", methods=["GET"])
+def admin_list_users():
+
+    user = getattr(g, "auth_user", None)
+    if not user or not is_admin_user(user):
+        return jsonify({"success": False, "error": "Admin access required."}), 403
+    if not supabase_enabled():
+        return jsonify({"success": False, "error": "User directory is unavailable."}), 503
+
+    users = []
+    for page in range(1, 11):
+        status, result = supabase_auth_request(
+            "GET",
+            f"admin/users?page={page}&per_page=100",
+            admin=True
+        )
+        if status != 200 or not isinstance(result, dict):
+            return jsonify({"success": False, "error": "Could not load the admin user directory."}), 503
+
+        batch = result.get("users", [])
+        if not isinstance(batch, list):
+            return jsonify({"success": False, "error": "Could not load the admin user directory."}), 503
+
+        for account in batch:
+            if isinstance(account, dict):
+                users.append({
+                    "email": account.get("email", ""),
+                    "created_at": account.get("created_at", ""),
+                    "last_sign_in_at": account.get("last_sign_in_at", ""),
+                    "email_confirmed_at": account.get("email_confirmed_at", "")
+                })
+
+        if len(batch) < 100:
+            break
+
+    return jsonify({
+        "success": True,
+        "count": len(users),
+        "truncated": len(users) == 1000,
+        "users": users
+    })
 
 @app.route(
     "/api/status",
