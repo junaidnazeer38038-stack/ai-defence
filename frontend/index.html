@@ -1484,7 +1484,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                         <button class="btn btn-secondary" type="button" onclick="startVoiceInput()" aria-label="Speak your question">Speak</button>
                         <button class="btn btn-primary" onclick="sendChat()">Send</button>
                     </div>
-                    <p class="chat-help-text">You can type or use <strong>Speak</strong>. <button type="button" class="chat-listen-button" onclick="speakLastAnswer()">Listen to the reply</button></p>
+                    <p class="chat-help-text">You can type or use <strong>Speak</strong>. <button type="button" class="chat-listen-button" onclick="speakLastAnswer()">Listen to the reply</button> <span id="voiceStatus" role="status" aria-live="polite"></span></p>
                 </div>
 
             </div>
@@ -3059,7 +3059,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             input.focus();
         }
 
-        async function sendChat() {
+        async function sendChat({ speakResponse = false } = {}) {
 
             const input =
                 document.getElementById("chatInput");
@@ -3121,10 +3121,12 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                         ${formatChatMessage(lastAIAnswer)}
                     </div>
                 `;
+                if (speakResponse) speakLastAnswer();
 
             } catch (error) {
 
                 document.getElementById("chatLoading").remove();
+                if (speakResponse) document.getElementById("voiceStatus").textContent = error.message;
 
                 chatBox.innerHTML += `
                     <div class="message ai">
@@ -4707,17 +4709,62 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
         function startVoiceInput() {
             if (!SpeechRecognitionAPI) { alert("Voice input is not supported in this browser. You can type your question instead."); return; }
             const recognition = new SpeechRecognitionAPI();
-            recognition.lang = navigator.language || "en-US";
+            recognition.lang = currentLanguage === "ur" ? "ur-PK" : (navigator.language || "en-US");
             recognition.interimResults = false;
-            recognition.onresult = event => { document.getElementById("chatInput").value = event.results[0][0].transcript; };
-            recognition.onerror = () => alert("Microphone input was unavailable. Check browser permission or type your question.");
-            recognition.start();
+            const voiceStatus = document.getElementById("voiceStatus");
+            recognition.onstart = () => { voiceStatus.textContent = currentLanguage === "ur" ? "سن رہا ہوں…" : "Listening…"; };
+            recognition.onresult = event => {
+                const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+                if (!transcript) {
+                    voiceStatus.textContent = currentLanguage === "ur" ? "آواز سمجھ نہیں آئی، دوبارہ بولیں۔" : "I could not understand that. Please try again.";
+                    return;
+                }
+                document.getElementById("chatInput").value = transcript;
+                voiceStatus.textContent = currentLanguage === "ur" ? "سوال بھیج رہا ہوں…" : "Sending your question…";
+                sendChat({ speakResponse: true });
+            };
+            recognition.onerror = event => {
+                voiceStatus.textContent = event.error === "not-allowed"
+                    ? (currentLanguage === "ur" ? "مائیکروفون کی اجازت دیں، یا سوال لکھیں۔" : "Allow microphone access, or type your question.")
+                    : (currentLanguage === "ur" ? "مائیکروفون دستیاب نہیں۔ سوال لکھ کر بھیجیں۔" : "Microphone unavailable. Type and send your question instead.");
+            };
+            try {
+                recognition.start();
+            } catch (error) {
+                voiceStatus.textContent = currentLanguage === "ur" ? "آواز شروع نہیں ہوسکی۔ دوبارہ کوشش کریں۔" : "Voice input could not start. Please try again.";
+            }
         }
 
         function speakLastAnswer() {
-            if (!lastAIAnswer || !window.speechSynthesis) { alert("There is no answer to read yet, or speech playback is unsupported."); return; }
+            if (!lastAIAnswer || !window.speechSynthesis) {
+                const voiceStatus = document.getElementById("voiceStatus");
+                voiceStatus.textContent = currentLanguage === "ur"
+                    ? "جواب موجود نہیں یا اس براؤزر میں آواز دستیاب نہیں۔"
+                    : "No answer is ready, or speech playback is unavailable in this browser.";
+                return;
+            }
             window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(new SpeechSynthesisUtterance(lastAIAnswer));
+            const spokenText = lastAIAnswer
+                .replace(/```[\s\S]*?```/g, " code example omitted ")
+                .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+                .replace(/\*\*(.*?)\*\*/g, "$1")
+                .replace(/[*_`]/g, "")
+                .replace(/^\s*[-+]\s+/gm, "")
+                .trim();
+            const utterance = new SpeechSynthesisUtterance(spokenText);
+            const language = /[\u0600-\u06FF]/.test(spokenText) ? "ur-PK" : "en-US";
+            utterance.lang = language;
+            const voices = window.speechSynthesis.getVoices();
+            utterance.voice = voices.find(voice => voice.lang.toLowerCase().startsWith(language.slice(0, 2))) || null;
+            const voiceStatus = document.getElementById("voiceStatus");
+            utterance.onstart = () => { voiceStatus.textContent = currentLanguage === "ur" ? "جواب بول رہا ہوں…" : "Speaking the answer…"; };
+            utterance.onend = () => { voiceStatus.textContent = ""; };
+            utterance.onerror = () => {
+                voiceStatus.textContent = currentLanguage === "ur"
+                    ? "آواز نہیں چل سکی۔ نیچے Listen to the reply دبائیں۔"
+                    : "Could not play speech. Click Listen to the reply to try again.";
+            };
+            window.speechSynthesis.speak(utterance);
         }
 
         async function runAIQualityCheck() {
