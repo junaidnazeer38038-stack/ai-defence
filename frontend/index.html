@@ -1414,7 +1414,7 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                 </div>
 
                 <details class="all-tools-panel" id="allToolsPanel">
-                    <summary><span><strong>All tools</strong><small>Scanners, reports, learning, history, and more</small></span><span class="all-tools-chevron" aria-hidden="true">&#9662;</span></summary>
+                    <summary><span><strong>All tools</strong><small>Security checks, AI, reports, and learning</small></span><span class="all-tools-chevron" aria-hidden="true">&#9662;</span></summary>
 
                 <div class="workspace-search">
                     <label for="toolSearch">Find a tool</label>
@@ -1426,7 +1426,7 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                     <button class="workspace-filter" type="button" data-category-filter="scan" aria-pressed="false" onclick="filterWorkspaceTools('scan', this)">Check links and files</button>
                     <button class="workspace-filter" type="button" data-category-filter="protect" aria-pressed="false" onclick="filterWorkspaceTools('protect', this)">Protect accounts</button>
                     <button class="workspace-filter" type="button" data-category-filter="assist" aria-pressed="false" onclick="filterWorkspaceTools('assist', this)">AI and learning</button>
-                    <button class="workspace-filter" type="button" data-category-filter="review" aria-pressed="false" onclick="filterWorkspaceTools('review', this)">Reports and activity</button>
+                    <button class="workspace-filter" type="button" data-category-filter="review" aria-pressed="false" onclick="filterWorkspaceTools('review', this)">Reports and utilities</button>
                 </div>
 
                 <div class="grid grid-3" id="workspaceTools">
@@ -1466,40 +1466,16 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                         <p>Look up basic public domain and network details.</p>
                         <span class="workspace-tool-open">Open lookup &rarr;</span>
                     </button>
+                    <button class="card workspace-tool" type="button" data-category="scan" data-search="screen screenshot visual computer analysis" onclick="openTool('screen')"><span class="workspace-tool-badge">🖥️</span><h3>Check a screen image</h3><p>Choose one screen or window to review for visible warnings.</p><span class="workspace-tool-open">Review an image &rarr;</span></button>
+                    <button class="card workspace-tool" type="button" data-category="scan" data-search="agent autonomous guided security review domain url defensive authorized" onclick="openTool('guidedReview')"><span class="workspace-tool-badge">🧭</span><h3>Review your website</h3><p>Run the link and domain checks together.</p><span class="workspace-tool-open">Start website check &rarr;</span></button>
                     <button class="card workspace-tool" type="button" data-category="review" data-search="security report generate findings recommendations pdf" onclick="openTool('report')">
                         <span class="workspace-tool-badge" aria-hidden="true">📄</span>
                         <h3>Create a security report</h3>
                         <p>Turn your findings into a clear report.</p>
                         <span class="workspace-tool-open">Create a report &rarr;</span>
                     </button>
-                    <button class="card workspace-tool" type="button" data-category="review" data-search="threat alerts news security awareness" onclick="openTool('alerts')">
-                        <span class="workspace-tool-badge" aria-hidden="true">🚨</span>
-                        <h3>Security alerts</h3>
-                        <p>Read useful online safety updates.</p>
-                        <span class="workspace-tool-open">View alerts &rarr;</span>
-                    </button>
-                    <button class="card workspace-tool" type="button" data-category="review" data-search="dashboard activity risk recent scans security center" onclick="openTool('dashboard')">
-                        <span class="workspace-tool-badge" aria-hidden="true">📊</span>
-                        <h3>Activity dashboard</h3>
-                        <p>See your recent checks and risk summaries.</p>
-                        <span class="workspace-tool-open">Open dashboard &rarr;</span>
-                    </button>
-                    <button class="card workspace-tool" type="button" data-category="review" data-search="history past scans saved results activity" onclick="openTool('history')">
-                        <span class="workspace-tool-badge" aria-hidden="true">🗂️</span>
-                        <h3>Past checks</h3>
-                        <p>Review your saved checks and results.</p>
-                        <span class="workspace-tool-open">Open history &rarr;</span>
-                    </button>
-                    <button class="card workspace-tool" type="button" data-category="review" data-search="feedback community reviews rating stars comments" onclick="openTool('feedback')">
-                        <span class="workspace-tool-badge" aria-hidden="true">&#9733;</span>
-                        <h3>Community Feedback</h3>
-                        <p>Rate the project and read reviews from everyone.</p>
-                        <span class="workspace-tool-open">View feedback &rarr;</span>
-                    </button>
                     <button class="card workspace-tool" type="button" data-category="assist" data-search="learning phishing quiz cybersecurity simulation safe" onclick="openTool('learning')"><span class="workspace-tool-badge">🎓</span><h3>Practice online safety</h3><p>Try a short phishing awareness quiz.</p><span class="workspace-tool-open">Start quiz &rarr;</span></button>
                     <button class="card workspace-tool" type="button" data-category="assist" data-search="ai benchmark quality test performance response" onclick="openTool('quality')"><span class="workspace-tool-badge">🧪</span><h3>Check AI response</h3><p>See whether AI is available and how quickly it replies.</p><span class="workspace-tool-open">Check AI &rarr;</span></button>
-                    <button class="card workspace-tool" type="button" data-category="scan" data-search="screen screenshot visual computer analysis" onclick="openTool('screen')"><span class="workspace-tool-badge">🖥️</span><h3>Check a screen image</h3><p>Choose one screen or window to review for visible warnings.</p><span class="workspace-tool-open">Review an image &rarr;</span></button>
-                    <button class="card workspace-tool" type="button" data-category="scan" data-search="agent autonomous guided security review domain url defensive authorized" onclick="openTool('guidedReview')"><span class="workspace-tool-badge">🧭</span><h3>Review your website</h3><p>Run the link and domain checks together.</p><span class="workspace-tool-open">Start website check &rarr;</span></button>
                 </div>
 
                 <div class="empty" id="workspaceEmpty" hidden>No tools found. Try another word.</div>
