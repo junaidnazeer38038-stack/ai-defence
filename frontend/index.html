@@ -1522,7 +1522,7 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                         <button class="btn btn-secondary" type="button" onclick="startVoiceInput()" aria-label="Speak your question">Speak</button>
                         <button class="btn btn-primary" onclick="sendChat()">Send</button>
                     </div>
-                    <p class="chat-help-text">You can type or use <strong>Speak</strong>. <button type="button" class="chat-listen-button" onclick="speakLastAnswer()">Listen to the reply</button> <span id="voiceStatus" role="status" aria-live="polite"></span></p>
+                    <p class="chat-help-text">You can type or use <strong>Speak</strong>. <button type="button" class="chat-listen-button" onclick="speakLastAnswer()">Listen to the reply</button> <button type="button" class="chat-listen-button" id="stopSpeechButton" onclick="stopAISpeech()" disabled>Stop speaking</button> <span id="voiceStatus" role="status" aria-live="polite"></span></p>
                 </div>
 
             </div>
@@ -4688,6 +4688,7 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
 
 
         let lastAIAnswer = "";
+        let activeSpeechUtterance = null;
         const learningQuiz = [
             { q: "A message says your account will close in 10 minutes unless you click a shortened link. What is the safest next step?", a: ["Click quickly before it expires", "Open the official site yourself and verify the notice", "Reply with your password"], correct: 1 },
             { q: "A coworker asks you to share a one-time sign-in code in chat. What should you do?", a: ["Share it if they know your name", "Do not share it; verify the request through a trusted channel", "Post it in the team room"], correct: 1 },
@@ -4762,11 +4763,14 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
             if (!lastAIAnswer || !window.speechSynthesis) {
                 const voiceStatus = document.getElementById("voiceStatus");
                 voiceStatus.textContent = currentLanguage === "ur"
-                    ? "جواب موجود نہیں یا اس براؤزر میں آواز دستیاب نہیں۔"
+                    ? "No answer is ready, or speech playback is unavailable in this browser."
                     : "No answer is ready, or speech playback is unavailable in this browser.";
                 return;
             }
+            const stopButton = document.getElementById("stopSpeechButton");
             window.speechSynthesis.cancel();
+            activeSpeechUtterance = null;
+            stopButton.disabled = true;
             const spokenText = lastAIAnswer
                 .replace(/```[\s\S]*?```/g, " code example omitted ")
                 .replace(/^\s{0,3}#{1,6}\s+/gm, "")
@@ -4775,21 +4779,39 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                 .replace(/^\s*[-+]\s+/gm, "")
                 .trim();
             const utterance = new SpeechSynthesisUtterance(spokenText);
+            activeSpeechUtterance = utterance;
+            stopButton.disabled = false;
             const language = /[\u0600-\u06FF]/.test(spokenText) ? "ur-PK" : "en-US";
             utterance.lang = language;
             const voices = window.speechSynthesis.getVoices();
             utterance.voice = voices.find(voice => voice.lang.toLowerCase().startsWith(language.slice(0, 2))) || null;
             const voiceStatus = document.getElementById("voiceStatus");
-            utterance.onstart = () => { voiceStatus.textContent = currentLanguage === "ur" ? "جواب بول رہا ہوں…" : "Speaking the answer…"; };
-            utterance.onend = () => { voiceStatus.textContent = ""; };
+            utterance.onstart = () => {
+                if (activeSpeechUtterance !== utterance) return;
+                voiceStatus.textContent = "Speaking the answer…";
+            };
+            utterance.onend = () => {
+                if (activeSpeechUtterance !== utterance) return;
+                activeSpeechUtterance = null;
+                stopButton.disabled = true;
+                voiceStatus.textContent = "";
+            };
             utterance.onerror = () => {
-                voiceStatus.textContent = currentLanguage === "ur"
-                    ? "آواز نہیں چل سکی۔ نیچے Listen to the reply دبائیں۔"
-                    : "Could not play speech. Click Listen to the reply to try again.";
+                if (activeSpeechUtterance !== utterance) return;
+                activeSpeechUtterance = null;
+                stopButton.disabled = true;
+                voiceStatus.textContent = "Could not play speech. Click Listen to the reply to try again.";
             };
             window.speechSynthesis.speak(utterance);
         }
 
+        function stopAISpeech() {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            activeSpeechUtterance = null;
+            document.getElementById("stopSpeechButton").disabled = true;
+            document.getElementById("voiceStatus").textContent = "Speech stopped.";
+        }
         async function runAIQualityCheck() {
             const button = document.getElementById("qualityRunButton");
             const result = document.getElementById("qualityResult");
