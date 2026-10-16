@@ -19,7 +19,7 @@ import uuid
 import urllib.request
 import urllib.parse
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ============================================================
@@ -34,6 +34,7 @@ BASE_DIR = os.path.abspath(
 
 FRONTEND_FOLDER = os.path.join(BASE_DIR, "frontend")
 HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
+FEEDBACK_FILE = os.path.join(BASE_DIR, "feedback.json")
 
 
 # ============================================================
@@ -565,6 +566,78 @@ def clear_history():
 
 
 # ============================================================
+# PUBLIC COMMUNITY FEEDBACK
+# ============================================================
+
+def local_load_feedback():
+
+    if os.getenv("VERCEL") == "1":
+        return None
+
+    try:
+        with open(FEEDBACK_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        return data if isinstance(data, list) else []
+    except FileNotFoundError:
+        return []
+    except Exception as e:
+        print("Feedback load error:", e)
+        return []
+
+
+def load_public_feedback():
+
+    if not supabase_enabled():
+        return local_load_feedback()
+
+    result = supabase_request(
+        "GET",
+        "feedback?select=id,rating,comment,created_at&order=created_at.desc&limit=1000"
+    )
+
+    if result is None:
+        if os.getenv("VERCEL") == "1":
+            return None
+        return local_load_feedback()
+
+    return [
+        row for row in result
+        if isinstance(row, dict)
+        and type(row.get("rating")) is int
+        and 1 <= row["rating"] <= 5
+    ]
+
+
+def save_public_feedback(rating, comment):
+
+    entry = {
+        "rating": rating,
+        "comment": comment,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+
+    if supabase_enabled():
+        result = supabase_request("POST", "feedback", entry)
+        if result is not None:
+            return True
+        if os.getenv("VERCEL") == "1":
+            return False
+
+    feedback = local_load_feedback()
+    if feedback is None:
+        return False
+
+    feedback.insert(0, entry)
+    try:
+        with open(FEEDBACK_FILE, "w", encoding="utf-8") as file:
+            json.dump(feedback, file, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print("Feedback save error:", e)
+        return False
+
+
+# ============================================================
 # COOKIE
 # ============================================================
 
@@ -929,7 +1002,9 @@ def api_status():
 
             "dashboard": True,
 
-            "history": True
+            "history": True,
+
+            "community_feedback": True
 
         },
 
@@ -2295,6 +2370,58 @@ def delete_history():
                 "Unable to clear history."
 
         }), 500
+
+
+# ============================================================
+# COMMUNITY FEEDBACK
+# ============================================================
+
+@app.route("/api/feedback", methods=["GET"])
+def get_feedback():
+
+    feedback = load_public_feedback()
+    if feedback is None:
+        return jsonify({
+            "success": False,
+            "error": "Community feedback storage is unavailable. Check the feedback table in Supabase."
+        }), 503
+
+    ratings = [item["rating"] for item in feedback]
+    return jsonify({
+        "success": True,
+        "count": len(feedback),
+        "average_rating": round(sum(ratings) / len(ratings), 1) if ratings else 0,
+        "feedback": feedback
+    })
+
+
+@app.route("/api/feedback", methods=["POST"])
+def submit_feedback():
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"success": False, "error": "Send feedback as JSON."}), 400
+
+    rating = payload.get("rating")
+    comment = payload.get("comment", "")
+
+    if type(rating) is not int or not 1 <= rating <= 5:
+        return jsonify({"success": False, "error": "Choose a star rating from 1 to 5."}), 400
+
+    if not isinstance(comment, str):
+        return jsonify({"success": False, "error": "Feedback must be plain text."}), 400
+
+    comment = comment.strip()
+    if len(comment) > 500:
+        return jsonify({"success": False, "error": "Feedback must be 500 characters or fewer."}), 400
+
+    if not save_public_feedback(rating, comment):
+        return jsonify({
+            "success": False,
+            "error": "Feedback could not be saved. Check the Supabase feedback table and server configuration."
+        }), 503
+
+    return jsonify({"success": True, "message": "Thanks for sharing your feedback."}), 201
 
 
 # ============================================================

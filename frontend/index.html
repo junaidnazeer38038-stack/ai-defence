@@ -409,6 +409,19 @@
             font-weight: 700;
         }
 
+        .feedback-summary { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+        .feedback-average { font-size: 28px; font-weight: 750; }
+        .feedback-stars { color: #fbbf24; letter-spacing: 2px; }
+        .feedback-meta, .feedback-date { color: var(--muted); font-size: 11px; }
+        .feedback-rating-input { display: flex; gap: 6px; }
+        .feedback-star-button { padding: 2px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 30px; line-height: 1; }
+        .feedback-star-button.selected, .feedback-star-button:hover { color: #fbbf24; }
+        .feedback-star-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+        .feedback-list { display: grid; gap: 12px; }
+        .feedback-item { padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-hover); }
+        .feedback-item-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+        .feedback-comment { color: var(--text); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+
         /* ================= STAT CARDS ================= */
 
         .stat-card {
@@ -1069,6 +1082,11 @@ textarea { min-height: 105px; }
             Scan History
         </button>
 
+        <button class="nav-btn" onclick="showPage('feedback', this)">
+            <span class="nav-icon">&#11088;</span>
+            Community Feedback
+        </button>
+
         <div class="menu-title">Project</div>
 
         <button class="nav-btn" onclick="showPage('about', this)">
@@ -1199,6 +1217,12 @@ textarea { min-height: 105px; }
                         <h3>Scan History</h3>
                         <p>Review saved scans and their risk scores.</p>
                         <span class="workspace-tool-open">Open history &rarr;</span>
+                    </button>
+                    <button class="card workspace-tool" type="button" data-category="review" data-search="feedback community reviews rating stars comments" onclick="openTool('feedback')">
+                        <span class="workspace-tool-badge" aria-hidden="true">&#9733;</span>
+                        <h3>Community Feedback</h3>
+                        <p>Rate the project and read reviews from everyone.</p>
+                        <span class="workspace-tool-open">View feedback &rarr;</span>
                     </button>
                 </div>
 
@@ -1660,6 +1684,66 @@ textarea { min-height: 105px; }
             </div>
 
 
+            <!-- ================= COMMUNITY FEEDBACK ================= -->
+
+            <div class="page" id="feedback">
+
+                <div class="welcome">
+                    <h2>Community Feedback</h2>
+                    <p>Share a star rating and read feedback from other visitors.</p>
+                </div>
+
+                <div class="grid grid-2">
+                    <div class="card">
+                        <div class="card-title">
+                            <div>
+                                <h3>Rate this project</h3>
+                                <p>Your review will be visible to everyone.</p>
+                            </div>
+                            <span aria-hidden="true">&#9733;</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Your star rating</label>
+                            <div class="feedback-rating-input" role="group" aria-label="Choose a rating from 1 to 5 stars">
+                                <button class="feedback-star-button" type="button" data-rating="1" aria-label="1 star" aria-pressed="false" onclick="setFeedbackRating(1)">&#9733;</button>
+                                <button class="feedback-star-button" type="button" data-rating="2" aria-label="2 stars" aria-pressed="false" onclick="setFeedbackRating(2)">&#9733;</button>
+                                <button class="feedback-star-button" type="button" data-rating="3" aria-label="3 stars" aria-pressed="false" onclick="setFeedbackRating(3)">&#9733;</button>
+                                <button class="feedback-star-button" type="button" data-rating="4" aria-label="4 stars" aria-pressed="false" onclick="setFeedbackRating(4)">&#9733;</button>
+                                <button class="feedback-star-button" type="button" data-rating="5" aria-label="5 stars" aria-pressed="false" onclick="setFeedbackRating(5)">&#9733;</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="feedbackComment">Comment (optional, up to 500 characters)</label>
+                            <textarea id="feedbackComment" maxlength="500" placeholder="What should we keep or improve?"></textarea>
+                        </div>
+
+                        <p class="feedback-meta" style="margin-bottom:14px;">Your rating and comment are public. Please do not include passwords, API keys, or personal information.</p>
+                        <button class="btn btn-primary" id="submitFeedbackButton" type="button" onclick="submitFeedback()">Send feedback</button>
+                        <p class="feedback-meta" id="feedbackFormStatus" role="status" aria-live="polite" style="margin-top:12px;"></p>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">
+                            <div>
+                                <h3>Visitor reviews</h3>
+                                <p>Ratings and comments are shared with everyone.</p>
+                            </div>
+                        </div>
+                        <div class="feedback-summary" id="feedbackSummary">
+                            <span class="feedback-average">—</span>
+                            <span class="feedback-meta">Loading community feedback…</span>
+                        </div>
+                        <div class="feedback-list" id="feedbackList" aria-live="polite">
+                            <div class="loading"><span class="spinner"></span> Loading feedback…</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+
             <!-- ================= ABOUT ================= -->
 
             <div class="page" id="about">
@@ -1929,6 +2013,11 @@ textarea { min-height: 105px; }
                 "Review previous security scans"
             ],
 
+            feedback: [
+                "Community Feedback",
+                "Public ratings and visitor reviews"
+            ],
+
             about: [
                 "About Project",
                 "Cyber Security AI project information"
@@ -2012,6 +2101,10 @@ textarea { min-height: 105px; }
 
             if (pageId === "history") {
                 loadHistory();
+            }
+
+            if (pageId === "feedback") {
+                loadFeedback();
             }
 
             document.getElementById("sidebar").classList.remove("open");
@@ -3299,6 +3392,103 @@ textarea { min-height: 105px; }
                         </p>
                     </div>
                 `;
+            }
+        }
+
+
+        /* =========================================================
+           COMMUNITY FEEDBACK
+        ========================================================= */
+
+        let selectedFeedbackRating = 0;
+
+        function setFeedbackRating(rating) {
+            selectedFeedbackRating = rating;
+            document.querySelectorAll(".feedback-star-button").forEach(button => {
+                const selected = Number(button.dataset.rating) <= rating;
+                button.classList.toggle("selected", selected);
+                button.setAttribute("aria-pressed", String(Number(button.dataset.rating) === rating));
+            });
+            document.getElementById("feedbackFormStatus").textContent = rating + " out of 5 stars selected.";
+        }
+
+        function renderFeedback(feedback) {
+            const summary = document.getElementById("feedbackSummary");
+            const list = document.getElementById("feedbackList");
+
+            if (!feedback.length) {
+                summary.innerHTML = '<span class="feedback-average">—</span><span class="feedback-meta">No ratings yet. Be the first to leave feedback.</span>';
+                list.innerHTML = '<div class="empty">No community feedback yet.</div>';
+                return;
+            }
+
+            const ratings = feedback.map(item => Number(item.rating) || 0);
+            const average = ratings.reduce((total, rating) => total + rating, 0) / ratings.length;
+            const fullStars = Math.round(average);
+            summary.innerHTML = `
+                <span class="feedback-average">${average.toFixed(1)}</span>
+                <span>
+                    <span class="feedback-stars" aria-label="${fullStars} out of 5 stars">${"★".repeat(fullStars)}${"☆".repeat(5 - fullStars)}</span><br>
+                    <span class="feedback-meta">${feedback.length} public ${feedback.length === 1 ? "review" : "reviews"}</span>
+                </span>
+            `;
+
+            list.innerHTML = feedback.map(item => {
+                const rating = Math.min(5, Math.max(1, Number(item.rating) || 1));
+                const date = item.created_at ? new Date(item.created_at).toLocaleString() : "";
+                return `
+                    <article class="feedback-item">
+                        <div class="feedback-item-header">
+                            <span class="feedback-stars" aria-label="${rating} out of 5 stars">${"★".repeat(rating)}${"☆".repeat(5 - rating)}</span>
+                            <time class="feedback-date">${escapeHTML(date)}</time>
+                        </div>
+                        <p class="feedback-comment">${escapeHTML(item.comment || "Star rating only.")}</p>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        async function loadFeedback() {
+            const summary = document.getElementById("feedbackSummary");
+            const list = document.getElementById("feedbackList");
+            list.innerHTML = '<div class="loading"><span class="spinner"></span> Loading feedback…</div>';
+
+            try {
+                const data = await safeFetchJSON("/api/feedback");
+                renderFeedback(Array.isArray(data.feedback) ? data.feedback : []);
+            } catch (error) {
+                summary.innerHTML = '<span class="feedback-average">—</span><span class="feedback-meta">Community ratings are temporarily unavailable.</span>';
+                list.innerHTML = `<div class="empty">${escapeHTML(error.message)}</div>`;
+            }
+        }
+
+        async function submitFeedback() {
+            const status = document.getElementById("feedbackFormStatus");
+            const button = document.getElementById("submitFeedbackButton");
+            const comment = document.getElementById("feedbackComment").value.trim();
+
+            if (!selectedFeedbackRating) {
+                status.textContent = "Choose a star rating first.";
+                return;
+            }
+
+            button.disabled = true;
+            status.textContent = "Sending feedback…";
+            try {
+                const data = await safeFetchJSON("/api/feedback", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ rating: selectedFeedbackRating, comment })
+                });
+                status.textContent = data.message || "Thanks for your feedback.";
+                document.getElementById("feedbackComment").value = "";
+                setFeedbackRating(0);
+                status.textContent = data.message || "Thanks for sharing your feedback.";
+                await loadFeedback();
+            } catch (error) {
+                status.textContent = error.message;
+            } finally {
+                button.disabled = false;
             }
         }
 
