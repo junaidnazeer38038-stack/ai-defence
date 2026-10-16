@@ -1161,6 +1161,13 @@ body::before { content: ""; position: fixed; inset: 0; z-index: 0; pointer-event
 #chat .chat-suggestions button:hover { border-color: rgba(56,189,248,.55); background: rgba(56,189,248,.12); }
 #chat .chat-help-text { margin: 8px 4px 0; color: var(--muted); font-size: 10px; }
 #chat .chat-listen-button { border: 0; background: transparent; color: var(--primary); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 3px; }
+#chat .chat-listen-button, #chat .chat-stop-button { min-height: 32px; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 650; transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease; }
+#chat .chat-listen-button:hover { background: color-mix(in srgb, var(--primary) 12%, transparent); }
+#chat .chat-stop-button { margin-left: 4px; border: 1px solid rgba(248,113,113,.45); background: rgba(127,29,29,.2); color: #fecaca; cursor: pointer; }
+#chat .chat-stop-button:not(:disabled):hover { border-color: #f87171; background: rgba(185,28,28,.32); color: #fff; transform: translateY(-1px); }
+#chat .chat-listen-button:focus-visible, #chat .chat-stop-button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+#chat .chat-stop-button:disabled { border-color: rgba(148,163,184,.18); background: rgba(148,163,184,.06); color: #8191a5; cursor: not-allowed; }
+#chat .voice-status { display: inline-block; margin-left: 6px; color: #b9d5e9; font-size: 11px; font-weight: 550; }
 #chat .chat-format-list { display: inline-block; padding-left: 5px; color: #bfeaff; }
 body.light .topbar { background: rgba(255,255,255,.82); }
 body.light .sidebar { background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(242,248,253,.99)); }
@@ -1175,6 +1182,10 @@ body.light .quick-action-icon { color: #036994; background: rgba(14,165,233,.1);
 body.light .all-tools-panel { background: rgba(255,255,255,.65); }
 body.light #chat .chat-box { background: linear-gradient(180deg, #f4f8fc, #edf4fa); }
 body.light #chat .message.ai { color: #173047; border-color: rgba(2,132,199,.14); background: linear-gradient(145deg, #fff, #f7fbff); }
+body.light #chat .chat-stop-button { border-color: rgba(185,28,28,.32); background: #fff1f2; color: #9f1239; }
+body.light #chat .chat-stop-button:not(:disabled):hover { border-color: #be123c; background: #ffe4e6; color: #881337; }
+body.light #chat .chat-stop-button:disabled { border-color: #dbe2ea; background: #f1f5f9; color: #64748b; }
+body.light #chat .voice-status { color: #334e68; }
 body.light #chat .message-label { color: #5c7084; }
 body.light #chat .chat-input-row { background: rgba(255,255,255,.85); }
 body.light #chat .chat-suggestions button { color: #075985; background: rgba(14,165,233,.06); }
@@ -1522,7 +1533,7 @@ body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
                         <button class="btn btn-secondary" type="button" onclick="startVoiceInput()" aria-label="Speak your question">Speak</button>
                         <button class="btn btn-primary" onclick="sendChat()">Send</button>
                     </div>
-                    <p class="chat-help-text">You can type or use <strong>Speak</strong>. <button type="button" class="chat-listen-button" onclick="speakLastAnswer()">Listen to the reply</button> <button type="button" class="chat-listen-button" id="stopSpeechButton" onclick="stopAISpeech()" disabled>Stop speaking</button> <span id="voiceStatus" role="status" aria-live="polite"></span></p>
+                    <p class="chat-help-text">You can type or use <strong>Speak</strong>. <button type="button" class="chat-listen-button" onclick="speakLastAnswer()">Listen to the reply</button> <button type="button" class="chat-stop-button" id="stopSpeechButton" onclick="stopAISpeech()" disabled>Stop speaking</button> <span class="voice-status" id="voiceStatus" role="status" aria-live="polite"></span></p>
                 </div>
 
             </div>
