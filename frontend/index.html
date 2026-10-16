@@ -1173,6 +1173,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .service-status-list .alert { margin-bottom:7px; }
 .workspace-tool-badge { width:44px; height:44px; font-size:22px; border-radius:13px; }
 #workspaceTools { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.history-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin:16px 0; }
+.history-toolbar input { flex:1 1 190px; min-width:150px; }
+.history-toolbar select { flex:0 1 145px; min-width:120px; }
+.history-toolbar select { padding:10px; border:1px solid var(--border); border-radius:9px; background:var(--input); color:var(--text); }
+.history-toolbar .btn { min-height:38px; }
+#historyResultCount { margin-left:auto; }
+body.urdu #historyResultCount { margin-left:0; margin-right:auto; }
 body.urdu { direction:rtl; font-family:Tahoma,"Noto Naskh Arabic",sans-serif; }
 body.urdu .sidebar { text-align:right; }
 body.urdu .nav-btn { text-align:right; }
@@ -1180,6 +1187,8 @@ body.urdu .workspace-tool { text-align:right; }
 body.urdu .workspace-tool-open { align-self:flex-start; }
 body.urdu .workspace-search label, body.urdu .auth-form label { text-align:right; }
 @media(max-width:760px){#workspaceTools{grid-template-columns:1fr}}
+@media(max-width:760px){.history-toolbar>*{flex:1 1 145px!important}.history-toolbar .feedback-meta{flex-basis:100%!important;margin:2px 0}.auth-account-email{display:none!important}.auth-account{gap:5px}.auth-profile-btn,.auth-signout{padding:7px 8px}.top-actions{gap:6px}}
+@media(max-width:560px){.topbar{height:auto;min-height:62px;padding:8px 10px!important;gap:6px}.top-actions{gap:5px}.page-heading h1{font-size:14px}.page-heading p{display:none}.language-select{max-width:76px;padding:7px 4px}.content{padding:12px!important}.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))!important}.stat-card{padding:12px}.stat-value{font-size:20px}.history-table{min-width:0!important}.history-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.history-table,.history-table tbody{display:block;width:100%}.history-table tbody tr{display:grid;grid-template-columns:1fr 1fr;margin:0 0 10px;padding:8px;border:1px solid var(--border);border-radius:11px;background:var(--card)}.history-table tbody tr:hover{background:var(--card-hover)}.history-table td{display:flex;flex-direction:column;gap:4px;min-width:0;padding:8px;border:0;overflow-wrap:anywhere}.history-table td::before{content:attr(data-label);color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}.history-table td[colspan]::before{display:none}.history-table td[colspan]{grid-column:1/-1}.history-table td:nth-child(3){grid-column:1/-1}}
 body.light .overview-hero { background:linear-gradient(115deg,#e2f5ff,#edf2ff 62%,#f1edff); }
 body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { color:#50667c; }
 @media(max-width:760px){.overview-hero{padding:21px}.risk-row{grid-template-columns:68px minmax(40px,1fr) 28px}}
@@ -1864,6 +1873,17 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
 
                     </div>
 
+                    <div class="history-toolbar" aria-label="Filter and export scan history">
+                        <input id="historySearch" type="search" placeholder="Search target or scan type..." oninput="renderHistory()">
+                        <select id="historyTypeFilter" aria-label="Filter by scan type" onchange="renderHistory()"><option value="">All scan types</option></select>
+                        <select id="historyRiskFilter" aria-label="Filter by risk level" onchange="renderHistory()">
+                            <option value="">All risk levels</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+                        </select>
+                        <button class="btn btn-secondary" type="button" onclick="exportHistory('csv')">Download CSV</button>
+                        <button class="btn btn-secondary" type="button" onclick="exportHistory('json')">Download JSON</button>
+                        <span id="historyResultCount" class="feedback-meta" role="status" aria-live="polite"></span>
+                    </div>
+
                     <div class="table-wrapper">
 
                         <table class="history-table">
@@ -2372,7 +2392,80 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             "See whether AI is available and how quickly it replies.": "دیکھیں اے آئی دستیاب ہے اور کتنی جلد جواب دیتی ہے۔",
             "Sign in": "سائن اِن", "Create your account": "اکاؤنٹ بنائیں", "New here? Create an account": "نئے ہیں؟ اکاؤنٹ بنائیں",
             "Already registered? Sign in": "پہلے سے اکاؤنٹ ہے؟ سائن اِن کریں", "Forgot password?": "پاس ورڈ بھول گئے؟",
-            "Send reset link": "ری سیٹ لنک بھیجیں", "Create account": "اکاؤنٹ بنائیں", "Update your account name": "اپنے اکاؤنٹ کا نام تبدیل کریں"
+            "Too many sign-in attempts. Wait a while, then try again.": "کئی بار سائن اِن کی کوشش ہوئی ہے۔ کچھ دیر بعد دوبارہ کوشش کریں۔",
+            "Send reset link": "ری سیٹ لنک بھیجیں", "Create account": "اکاؤنٹ بنائیں", "Update your account name": "اپنے اکاؤنٹ کا نام تبدیل کریں",
+            "Scan History": "اسکین ہسٹری", "Review previous security scans and their risk scores.": "پچھلے سکیورٹی اسکین اور ان کے خطرے کے اسکور دیکھیں۔",
+            "Security Scan History": "سکیورٹی اسکین ہسٹری", "Your recent scan activity": "آپ کی حالیہ اسکین سرگرمی", "Clear History": "ہسٹری صاف کریں",
+            "Search target or scan type...": "ہدف یا اسکین کی قسم تلاش کریں...", "All scan types": "اسکین کی تمام اقسام",
+            "All risk levels": "خطرے کی تمام سطحیں", "Download CSV": "CSV ڈاؤن لوڈ کریں", "Download JSON": "JSON ڈاؤن لوڈ کریں",
+            "Time": "وقت", "Type": "قسم", "Target": "ہدف", "Risk": "خطرہ", "Status": "حالت",
+            "Loading history...": "ہسٹری لوڈ ہو رہی ہے...", "No scan history available.": "ابھی اسکین ہسٹری موجود نہیں۔",
+            "No results match these filters.": "ان فلٹرز سے کوئی نتیجہ نہیں ملا۔", "Could not load history.": "ہسٹری لوڈ نہیں ہوسکی.",
+            "URL Safety Scanner": "لنک سکیورٹی اسکینر", "Analyze websites for security indicators": "ویب سائٹ میں سکیورٹی کی نشانیاں دیکھیں",
+            "File Security Scanner": "فائل سکیورٹی اسکینر", "Analyze basic file security properties": "فائل کی بنیادی سکیورٹی معلومات دیکھیں",
+            "Phishing Detector": "فشنگ ڈیٹیکٹر", "Identify common phishing indicators": "فشنگ کی عام نشانیاں پہچانیں",
+            "Password Checker": "پاس ورڈ چیکر", "Check password strength securely": "پاس ورڈ کی مضبوطی محفوظ طریقے سے چیک کریں",
+            "IP / Domain Info": "آئی پی / ڈومین کی معلومات", "Basic DNS and network intelligence": "بنیادی DNS اور نیٹ ورک معلومات",
+            "Security Report": "سکیورٹی رپورٹ", "Generate professional security reports": "سکیورٹی رپورٹ تیار کریں",
+            "Threat Alerts": "خطرے کے الرٹس", "Security awareness and alerts": "سکیورٹی آگاہی اور الرٹس",
+            "About Project": "پروجیکٹ کے بارے میں", "Cyber Security AI project information": "سائبر سکیورٹی اے آئی کی معلومات",
+            "Your account": "آپ کا اکاؤنٹ", "Tools": "ٹولز", "Next question": "اگلا سوال",
+            "Sign in to use the Cyber Security AI workspace.": "سائبر سکیورٹی اے آئی استعمال کرنے کے لیے سائن اِن کریں۔",
+            "Sign in with the email and password you registered with.": "اپنی رجسٹرڈ ای میل اور پاس ورڈ سے سائن اِن کریں۔",
+            "Create an account with your email and username. Confirm your email before signing in.": "ای میل اور یوزر نیم سے اکاؤنٹ بنائیں۔ سائن اِن سے پہلے ای میل کی تصدیق کریں۔",
+            "Username (visible only to you and admin)": "یوزر نیم (صرف آپ اور ایڈمن کو نظر آئے گا)",
+            "Ask a security question": "سکیورٹی سے متعلق سوال پوچھیں", "Type or speak in your own words. The assistant gives general defensive guidance.": "اپنے الفاظ میں لکھیں یا بولیں۔ معاون دفاعی سکیورٹی رہنمائی دے گا۔",
+            "Defensive cybersecurity guidance": "دفاعی سائبر سکیورٹی رہنمائی", "How do I spot phishing?": "فشنگ کی پہچان کیسے کریں؟",
+            "I clicked a suspicious link": "میں نے مشکوک لنک کھول دیا", "Help secure my accounts": "میرے اکاؤنٹس محفوظ کرنے میں مدد کریں",
+            "Type your question here...": "اپنا سوال یہاں لکھیں...", "Speak": "بولیں", "Send": "بھیجیں",
+            "You can type or use": "آپ لکھ سکتے ہیں یا استعمال کریں", "Listen to the reply": "جواب سنیں",
+            "Analyze a URL for basic security indicators and suspicious patterns.": "لنک میں خطرے کی عام نشانیاں تلاش کریں۔",
+            "Website Security Analysis": "ویب سائٹ سکیورٹی تجزیہ", "Enter a website URL to analyze it": "تجزیے کے لیے ویب سائٹ کا لنک درج کریں",
+            "Website URL": "ویب سائٹ لنک", "🔍 Scan URL": "🔍 لنک اسکین کریں", "File Analysis": "فائل کا تجزیہ",
+            "Check basic file properties, SHA-256 hash and suspicious indicators.": "فائل کی قسم، SHA-256 اور مشکوک علامات چیک کریں۔",
+            "Your file is analyzed locally for basic indicators.": "فائل کی بنیادی جانچ آپ کے ڈیوائس پر ہوتی ہے۔", "Select File": "فائل منتخب کریں", "🔍 Scan File": "🔍 فائل اسکین کریں",
+            "Analyze a message for common phishing and social-engineering indicators.": "پیغام میں فشنگ کی عام نشانیاں دیکھیں۔",
+            "Message Analysis": "پیغام کا تجزیہ", "Paste a suspicious message below.": "مشکوک پیغام نیچے پیسٹ کریں۔",
+            "Message / Email": "پیغام / ای میل", "🛡️ Detect Phishing": "🛡️ فشنگ چیک کریں",
+            "Check password strength locally. Passwords are not stored in scan history.": "پاس ورڈ کی مضبوطی آپ کے ڈیوائس پر چیک ہوتی ہے اور محفوظ نہیں کی جاتی۔",
+            "Password Analysis": "پاس ورڈ کا تجزیہ", "Use a sample password for testing.": "جانچ کے لیے نمونہ پاس ورڈ لکھیں۔",
+            "Enter password": "پاس ورڈ درج کریں", "🔐 Check Strength": "🔐 مضبوطی چیک کریں",
+            "Retrieve basic DNS and network information for a domain or IP.": "ڈومین یا آئی پی کی بنیادی DNS معلومات حاصل کریں۔",
+            "Network Lookup": "نیٹ ورک تلاش", "DNS information only — no port scanning.": "صرف DNS معلومات—پورٹ اسکین نہیں ہوتا۔",
+            "IP Address / Domain": "آئی پی ایڈریس / ڈومین", "🌐 Lookup": "🌐 تلاش کریں",
+            "Generate and download a structured cybersecurity report.": "سائبر سکیورٹی رپورٹ بنائیں اور ڈاؤن لوڈ کریں۔",
+            "Report Generator": "رپورٹ بنائیں", "Enter findings or scan information.": "نتائج یا اسکین کی معلومات درج کریں۔",
+            "Security Findings": "سکیورٹی نتائج", "Enter security findings here...": "سکیورٹی نتائج یہاں درج کریں...", "📄 Generate Report": "📄 رپورٹ بنائیں",
+            "Threat Alerts": "خطرے کے الرٹس", "Security awareness alerts and defensive recommendations.": "سکیورٹی الرٹس اور دفاعی تجاویز۔",
+            "Community Feedback": "صارفین کی رائے", "Share a star rating and read feedback from other visitors.": "ریٹنگ دیں اور دوسرے صارفین کی رائے پڑھیں۔",
+            "Rate this project": "اس پروجیکٹ کی ریٹنگ دیں", "Your review will be visible to everyone.": "آپ کی رائے سب کو نظر آئے گی۔",
+            "Your star rating": "آپ کی اسٹار ریٹنگ", "Comment (optional, up to 500 characters)": "تبصرہ (اختیاری، 500 حروف تک)",
+            "What should we keep or improve?": "ہمیں کیا بہتر کرنا چاہیے؟", "Send feedback": "رائے بھیجیں", "Visitor reviews": "صارفین کے تبصرے",
+            "Ratings and comments are shared with everyone.": "ریٹنگ اور تبصرے سب کے ساتھ شیئر ہوتے ہیں۔",
+            "Registered users": "رجسٹرڈ صارفین", "Refresh": "تازہ کریں", "Only the configured administrator can view this list.": "یہ فہرست صرف ایڈمن دیکھ سکتا ہے۔",
+            "Joined": "شمولیت", "Last sign in": "آخری سائن اِن", "Email verified": "ای میل تصدیق شدہ",
+            "Cybersecurity Learning": "سائبر سکیورٹی سیکھیں", "Practice security awareness safely": "سکیورٹی کے بارے میں محفوظ طریقے سے سیکھیں",
+            "Practice safely with a phishing awareness quiz. Answers stay in this browser.": "فشنگ کے مختصر کوئز سے محفوظ طریقے سے سیکھیں۔ جوابات اسی براؤزر میں رہیں گے۔",
+            "Safe device security checklist": "ڈیوائس محفوظ رکھنے کی فہرست", "Guidance only; this page does not control your computer.": "یہ صرف رہنمائی ہے؛ یہ صفحہ آپ کے کمپیوٹر کو کنٹرول نہیں کرتا۔",
+            "Turn on automatic operating system and browser updates.": "آپریٹنگ سسٹم اور براؤزر کی خودکار اپ ڈیٹس آن رکھیں۔",
+            "Use unique passwords and enable multi-factor authentication.": "ہر اکاؤنٹ کے لیے الگ پاس ورڈ اور ملٹی فیکٹر تصدیق استعمال کریں۔",
+            "Review installed applications and remove ones you do not recognize.": "انسٹال ایپس دیکھیں اور نامعلوم ایپس ہٹا دیں۔",
+            "Back up important files and verify that recovery works.": "اہم فائلوں کا بیک اپ لیں اور بحالی کا طریقہ چیک کریں۔",
+            "AI Quality Check": "اے آئی معیار کی جانچ", "Check AI response availability and latency": "اے آئی کی دستیابی اور جواب کا وقت چیک کریں",
+            "Measure whether the configured AI responds to two safe, fixed cybersecurity prompts.": "دو محفوظ سائبر سکیورٹی سوالات سے اے آئی کا جواب چیک کریں۔",
+            "Run quality check": "معیار کی جانچ چلائیں", "Screen Snapshot Review": "اسکرین تصویر کا جائزہ",
+            "Analyze one frame you explicitly choose": "آپ کی منتخب کردہ اسکرین تصویر کا تجزیہ",
+            "Capture one frame that you choose and request a visual security review.": "ایک منتخب تصویر لے کر اس میں سکیورٹی کی نشانیاں دیکھیں۔",
+            "What should the AI look for?": "اے آئی کو کیا تلاش کرنا چاہیے؟",
+            "Choose screen and review one frame": "اسکرین منتخب کریں اور تصویر کا جائزہ لیں",
+            "Guided Security Review": "رہنمائی کے ساتھ سکیورٹی جائزہ", "Run approved checks on a website": "ویب سائٹ پر منظور شدہ چیک چلائیں",
+            "Combine existing checks into one defensive workflow for a site you are authorized to review.": "اجازت یافتہ ویب سائٹ کے لیے موجودہ دفاعی چیک ایک ساتھ چلائیں۔",
+            "Run URL and domain checks": "لنک اور ڈومین چیک کریں", "AI is analyzing...": "اے آئی تجزیہ کر رہی ہے...",
+            "Ready to help": "مدد کے لیے تیار", "ASSISTANT": "معاون", "AI Security Assistant": "اے آئی سکیورٹی معاون",
+            "Loading alerts...": "الرٹس لوڈ ہو رہے ہیں...", "Loading...": "لوڈ ہو رہا ہے...",
+            "No recent scans.": "حالیہ اسکین موجود نہیں۔", "Dashboard unavailable": "ڈیش بورڈ دستیاب نہیں",
+            "Recommendations unavailable.": "تجاویز دستیاب نہیں۔", "Run a check to see your saved security results.": "محفوظ سکیورٹی نتائج دیکھنے کے لیے چیک چلائیں۔",
+            "Are you sure you want to clear scan history?": "کیا آپ واقعی اسکین ہسٹری صاف کرنا چاہتے ہیں؟"
         };
 
         function setLanguage(language) {
@@ -2399,12 +2492,16 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             });
             document.getElementById("languageSelect").value = currentLanguage;
             const placeholders = currentLanguage === "ur"
-                ? { toolSearch: "لنک، پیغام، پاس ورڈ یا رپورٹ تلاش کریں...", guidedReviewTarget: "https://example.com" }
-                : { toolSearch: "Try link, message, password, report...", guidedReviewTarget: "https://example.com" };
+                ? { toolSearch: "لنک، پیغام، پاس ورڈ یا رپورٹ تلاش کریں...", historySearch: "ہدف یا اسکین کی قسم تلاش کریں...", chatInput: "اپنا سوال یہاں لکھیں...", phishingInput: "مشکوک پیغام یہاں پیسٹ کریں...", passwordInput: "پاس ورڈ درج کریں", reportInput: "سکیورٹی نتائج یہاں درج کریں...", authUsername: "مثلاً junaid_01", guidedReviewTarget: "https://example.com" }
+                : { toolSearch: "Try link, message, password, report...", historySearch: "Search target or scan type...", chatInput: "Type your question here...", phishingInput: "Paste the suspicious message here...", passwordInput: "Enter password", reportInput: "Enter security findings here...", authUsername: "e.g. junaid_01", guidedReviewTarget: "https://example.com" };
             Object.entries(placeholders).forEach(([id, placeholder]) => {
                 const field = document.getElementById(id);
                 if (field) field.placeholder = placeholder;
             });
+            if (typeof scanHistoryEntries !== "undefined") {
+                updateHistoryTypeOptions();
+                if (document.getElementById("history")?.classList.contains("active")) renderHistory();
+            }
         }
 
         function togglePasswordVisibility(inputId, button) {
@@ -4153,110 +4250,132 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
            HISTORY
         ========================================================= */
 
-        async function loadHistory() {
+        let scanHistoryEntries = [];
+        let scanHistoryLoadError = "";
 
-            const body =
-                document.getElementById(
-                    "historyBody"
-                );
+        function riskBand(score) {
+            if (score >= 80) return "critical";
+            if (score >= 60) return "high";
+            if (score >= 30) return "medium";
+            return "low";
+        }
 
-            body.innerHTML = `
-                <tr>
-                    <td colspan="5">
-                        <div class="loading">
-                            <span class="spinner"></span>
-                            Loading history...
-                        </div>
-                    </td>
-                </tr>
-            `;
+        function updateHistoryTypeOptions() {
+            const select = document.getElementById("historyTypeFilter");
+            if (!select) return;
+            const selected = select.value;
+            const label = currentLanguage === "ur" ? "اسکین کی تمام اقسام" : "All scan types";
+            select.replaceChildren(new Option(label, ""));
+            [...new Set(scanHistoryEntries.map(item => String(item.type || "Unknown")))].forEach(type => {
+                select.add(new Option(type, type));
+            });
+            if ([...select.options].some(option => option.value === selected)) select.value = selected;
+        }
 
-            try {
+        function filteredHistory() {
+            const query = (document.getElementById("historySearch").value || "").trim().toLowerCase();
+            const type = document.getElementById("historyTypeFilter").value;
+            const risk = document.getElementById("historyRiskFilter").value;
+            return scanHistoryEntries.filter(item => {
+                const score = Number(item.risk_score) || 0;
+                const searchText = `${item.type || ""} ${item.target || ""} ${item.status || ""}`.toLowerCase();
+                return (!query || searchText.includes(query)) && (!type || String(item.type || "Unknown") === type) && (!risk || riskBand(score) === risk);
+            });
+        }
 
-                const data =
-                    await safeFetchJSON(
-                        "/api/history"
-                    );
+        function renderHistory() {
+            const body = document.getElementById("historyBody");
+            const filtered = filteredHistory();
+            const count = document.getElementById("historyResultCount");
+            count.textContent = currentLanguage === "ur"
+                ? `${filtered.length} میں سے ${scanHistoryEntries.length} ریکارڈ دکھائے جا رہے ہیں`
+                : `Showing ${filtered.length} of ${scanHistoryEntries.length} records`;
 
-                const history =
-                    data.history || [];
-
-                if (!history.length) {
-
-                    body.innerHTML = `
-                        <tr>
-                            <td colspan="5">
-                                <div class="empty">
-                                    No scan history available.
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-
-                    return;
-                }
-
-                body.innerHTML =
-                    history.map(item => {
-
-                        const score =
-                            Number(item.risk_score) || 0;
-
-                        const cls =
-                            getRiskClass(score);
-
-                        return `
-
-                            <tr>
-
-                                <td>
-                                    ${escapeHTML(
-                                        item.timestamp || "-"
-                                    )}
-                                </td>
-
-                                <td>
-                                    ${escapeHTML(
-                                        item.type || "-"
-                                    )}
-                                </td>
-
-                                <td>
-                                    ${escapeHTML(
-                                        item.target || "-"
-                                    )}
-                                </td>
-
-                                <td>
-                                    <span class="badge ${cls}">
-                                        ${score}/100
-                                    </span>
-                                </td>
-
-                                <td>
-                                    ${escapeHTML(
-                                        item.status || "-"
-                                    )}
-                                </td>
-
-                            </tr>
-
-                        `;
-
-                    }).join("");
-
-            } catch (error) {
-
-                body.innerHTML = `
-                    <tr>
-                        <td colspan="5">
-                            <div class="empty">
-                                ${escapeHTML(error.message)}
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            if (!filtered.length) {
+                const message = scanHistoryEntries.length
+                    ? (currentLanguage === "ur" ? "ان فلٹرز سے کوئی نتیجہ نہیں ملا۔" : "No results match these filters.")
+                    : scanHistoryLoadError || (currentLanguage === "ur" ? "ابھی اسکین کی ہسٹری موجود نہیں۔" : "No scan history available.");
+                body.innerHTML = `<tr><td colspan="5"><div class="empty">${escapeHTML(message)}</div></td></tr>`;
+                return;
             }
+
+            body.innerHTML = filtered.map(item => {
+                const score = Number(item.risk_score) || 0;
+                const labels = currentLanguage === "ur"
+                    ? { time: "وقت", type: "قسم", target: "ہدف", risk: "خطرہ", status: "حالت" }
+                    : { time: "Time", type: "Type", target: "Target", risk: "Risk", status: "Status" };
+                return `<tr>
+                    <td data-label="${labels.time}">${escapeHTML(item.timestamp || "-")}</td>
+                    <td data-label="${labels.type}">${escapeHTML(item.type || "-")}</td>
+                    <td data-label="${labels.target}">${escapeHTML(item.target || "-")}</td>
+                    <td data-label="${labels.risk}"><span class="badge ${getRiskClass(score)}">${score}/100</span></td>
+                    <td data-label="${labels.status}">${escapeHTML(item.status || "-")}</td>
+                </tr>`;
+            }).join("");
+        }
+
+        function exportHistory(format) {
+            const rows = filteredHistory().map(item => ({
+                time: item.timestamp || "",
+                type: item.type || "",
+                target: item.target || "",
+                risk_score: Number(item.risk_score) || 0,
+                status: item.status || ""
+            }));
+            if (!rows.length) {
+                document.getElementById("historyResultCount").textContent = currentLanguage === "ur" ? "برآمد کرنے کے لیے کوئی ریکارڈ نہیں۔" : "No records to export.";
+                return;
+            }
+
+            const stamp = new Date().toISOString().slice(0, 10);
+            let contents;
+            let mimeType;
+            let extension;
+            if (format === "json") {
+                contents = JSON.stringify(rows, null, 2);
+                mimeType = "application/json;charset=utf-8";
+                extension = "json";
+            } else {
+                const csvCell = value => {
+                    let text = String(value ?? "");
+                    if (/^\s*[=+\-@]/.test(text)) text = "'" + text;
+                    return `"${text.replace(/"/g, '""')}"`;
+                };
+                const headers = currentLanguage === "ur"
+                    ? ["وقت", "قسم", "ہدف", "خطرے کا اسکور", "حالت"]
+                    : ["Time", "Type", "Target", "Risk score", "Status"];
+                contents = "\uFEFF" + [headers, ...rows.map(row => [row.time, row.type, row.target, row.risk_score, row.status])]
+                    .map(row => row.map(csvCell).join(",")).join("\r\n");
+                mimeType = "text/csv;charset=utf-8";
+                extension = "csv";
+            }
+
+            const url = URL.createObjectURL(new Blob([contents], { type: mimeType }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `scan-history-${stamp}.${extension}`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        async function loadHistory() {
+            const body = document.getElementById("historyBody");
+            body.innerHTML = '<tr><td colspan="5"><div class="loading"><span class="spinner"></span>Loading history...</div></td></tr>';
+            try {
+                const data = await safeFetchJSON("/api/history");
+                scanHistoryLoadError = "";
+                scanHistoryEntries = Array.isArray(data.history) ? data.history : [];
+                updateHistoryTypeOptions();
+                renderHistory();
+            } catch (error) {
+                scanHistoryLoadError = error.message;
+                scanHistoryEntries = [];
+                body.innerHTML = `<tr><td colspan="5"><div class="empty">${escapeHTML(error.message)}</div></td></tr>`;
+                document.getElementById("historyResultCount").textContent = currentLanguage === "ur" ? "ہسٹری لوڈ نہیں ہوسکی۔" : "Could not load history.";
+            }
+            setLanguage(currentLanguage);
         }
 
 
@@ -4264,7 +4383,9 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
 
             if (
                 !confirm(
-                    "Are you sure you want to clear scan history?"
+                    currentLanguage === "ur"
+                        ? "کیا آپ واقعی اسکین ہسٹری صاف کرنا چاہتے ہیں؟"
+                        : "Are you sure you want to clear scan history?"
                 )
             ) {
                 return;

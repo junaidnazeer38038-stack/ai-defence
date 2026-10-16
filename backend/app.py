@@ -1277,6 +1277,8 @@ def auth_login():
         "token?grant_type=password",
         {"email": email.strip().lower(), "password": password}
     )
+    if status == 429:
+        return jsonify({"success": False, "error": "Too many sign-in attempts. Wait a while, then try again."}), 429
     if status != 200 or not isinstance(session, dict) or not session.get("access_token"):
         return jsonify({"success": False, "error": "Email or password is incorrect, or email verification is still required."}), 401
 
