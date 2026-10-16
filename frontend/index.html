@@ -39,6 +39,25 @@
             --shadow: 0 15px 40px rgba(15, 23, 42, 0.09);
         }
 
+        body.cyber-neon {
+            color-scheme: dark;
+            --bg: #050816;
+            --bg-secondary: #091126;
+            --card: rgba(9, 19, 39, 0.94);
+            --card-hover: #101d3a;
+            --border: rgba(34, 211, 238, 0.24);
+            --text: #e4faff;
+            --muted: #8ca9c2;
+            --primary: #22d3ee;
+            --primary-dark: #0891b2;
+            --success: #34d399;
+            --warning: #facc15;
+            --danger: #fb7185;
+            --sidebar: #050a18;
+            --input: #071226;
+            --shadow: 0 0 28px rgba(34, 211, 238, 0.1);
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -451,6 +470,7 @@
         .auth-signout { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); cursor: pointer; font-size: 11px; }
         .auth-profile-btn { padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:11px; }
         .language-select { padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font-size:11px; }
+        .theme-select { width:112px; }
         .admin-table-wrap { overflow-x: auto; }
         .admin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .admin-table th, .admin-table td { padding: 11px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
@@ -1199,6 +1219,22 @@ body.urdu .workspace-search label, body.urdu .auth-form label { text-align:right
 @media(max-width:560px){.topbar{height:auto;min-height:62px;padding:8px 10px!important;gap:6px}.top-actions{gap:5px}.page-heading h1{font-size:14px}.page-heading p{display:none}.language-select{max-width:76px;padding:7px 4px}.content{padding:12px!important}.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))!important}.stat-card{padding:12px}.stat-value{font-size:20px}.history-table{min-width:0!important}.history-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.history-table,.history-table tbody{display:block;width:100%}.history-table tbody tr{display:grid;grid-template-columns:1fr 1fr;margin:0 0 10px;padding:8px;border:1px solid var(--border);border-radius:11px;background:var(--card)}.history-table tbody tr:hover{background:var(--card-hover)}.history-table td{display:flex;flex-direction:column;gap:4px;min-width:0;padding:8px;border:0;overflow-wrap:anywhere}.history-table td::before{content:attr(data-label);color:var(--muted);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}.history-table td[colspan]::before{display:none}.history-table td[colspan]{grid-column:1/-1}.history-table td:nth-child(3){grid-column:1/-1}}
 body.light .overview-hero { background:linear-gradient(115deg,#e2f5ff,#edf2ff 62%,#f1edff); }
 body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { color:#50667c; }
+body.cyber-neon { background:radial-gradient(ellipse at 12% 0%,rgba(34,211,238,.12),transparent 34%),radial-gradient(ellipse at 92% 28%,rgba(168,85,247,.13),transparent 32%),var(--bg); }
+body.cyber-neon::before { background:radial-gradient(ellipse at 12% 0%,rgba(34,211,238,.16),transparent 34%),radial-gradient(ellipse at 92% 28%,rgba(168,85,247,.14),transparent 32%); }
+body.cyber-neon .topbar { background:rgba(5,8,22,.86); box-shadow:0 4px 24px rgba(34,211,238,.06); }
+body.cyber-neon .sidebar { background:linear-gradient(180deg,#050a18,#0b1026); border-right-color:rgba(34,211,238,.22); }
+body.cyber-neon .brand-icon { background:linear-gradient(135deg,#06b6d4,#7c3aed); box-shadow:0 0 24px rgba(34,211,238,.3); }
+body.cyber-neon .nav-btn.active { color:#cffafe; background:linear-gradient(90deg,rgba(34,211,238,.2),rgba(139,92,246,.1)); border-color:rgba(34,211,238,.24); box-shadow:inset 3px 0 0 #22d3ee; }
+body.cyber-neon .card { box-shadow:var(--shadow),inset 0 1px rgba(34,211,238,.06); }
+body.cyber-neon .workspace-hero, body.cyber-neon .overview-hero { border-color:rgba(34,211,238,.3); background:linear-gradient(115deg,rgba(8,47,73,.96),rgba(31,24,62,.94) 68%,rgba(49,22,73,.88)); }
+body.cyber-neon .workspace-hero h2, body.cyber-neon .overview-hero h2 { color:#e6fcff; }
+body.cyber-neon .quick-action-primary { border-color:rgba(34,211,238,.4); background:linear-gradient(135deg,rgba(8,145,178,.35),rgba(76,29,149,.42)); }
+body.cyber-neon .btn-primary { background:linear-gradient(135deg,#0891b2,#7c3aed); box-shadow:0 0 20px rgba(34,211,238,.2); }
+body.cyber-neon #chat .chat-box { border-color:rgba(34,211,238,.22); background:linear-gradient(180deg,rgba(5,12,29,.97),rgba(13,13,39,.98)); }
+body.cyber-neon #chat .message.ai { border-color:rgba(34,211,238,.22); background:linear-gradient(145deg,rgba(8,35,54,.98),rgba(28,20,55,.98)); }
+body.cyber-neon #chat .chat-suggestions button { color:#a5f3fc; border-color:rgba(34,211,238,.27); background:rgba(34,211,238,.07); }
+body.cyber-neon .theme-select option { background:#091126; color:#e4faff; }
+@media(max-width:560px){.theme-select{width:92px;max-width:92px!important;padding:7px 3px;font-size:10px}.topbar .system-status{padding:0;border:0;background:transparent}.topbar .system-status #headerStatusText{display:none}}
 @media(max-width:760px){.overview-hero{padding:21px}.risk-row{grid-template-columns:68px minmax(40px,1fr) 28px}}
 
     </style>
@@ -1317,9 +1353,11 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                     <option value="ur">اردو</option>
                 </select>
 
-                <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">
-                    ☀️
-                </button>
+                <select class="language-select theme-select" id="themeSelect" aria-label="Theme" onchange="setTheme(this.value)">
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                    <option value="neon">Cyber Neon</option>
+                </select>
                 <div class="auth-account" id="authAccount">
                     <button class="auth-profile-btn" type="button" onclick="showPage('profile')"><span data-i18n="profile">Profile</span></button>
                     <span class="auth-account-email" id="authAccountName"></span>
@@ -2373,6 +2411,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
         const originalUiText = new WeakMap();
 
         const englishToUrdu = {
+            "Cyber Neon": "سائبر نیون",
             "Overview": "جائزہ", "Your security activity and service status": "آپ کی سکیورٹی سرگرمیاں اور سروس کی حالت", "← Back": "→ واپس",
             "All tools": "تمام ٹولز", "Find the right security tool for your task": "اپنے کام کے لیے سکیورٹی ٹول تلاش کریں",
             "AI Assistant": "اے آئی معاون", "Security alerts": "سکیورٹی الرٹس", "Past scans": "پچھلے اسکین",
@@ -2902,34 +2941,18 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
            THEME
         ========================================================= */
 
-        function toggleTheme() {
-
-            document.body.classList.toggle("light");
-
-            const isLight =
-                document.body.classList.contains("light");
-
-            localStorage.setItem(
-                "cyberTheme",
-                isLight ? "light" : "dark"
-            );
-
-            document.getElementById("themeBtn").textContent =
-                isLight ? "🌙" : "☀️";
+        function setTheme(theme) {
+            const selected = ["dark", "light", "neon"].includes(theme) ? theme : "dark";
+            document.body.classList.toggle("light", selected === "light");
+            document.body.classList.toggle("cyber-neon", selected === "neon");
+            document.getElementById("themeSelect").value = selected;
+            try { localStorage.setItem("cyberTheme", selected); } catch (error) { /* Theme preference is optional. */ }
         }
 
-
         function loadTheme() {
-
-            const theme =
-                localStorage.getItem("cyberTheme");
-
-            if (theme === "light") {
-
-                document.body.classList.add("light");
-
-                document.getElementById("themeBtn").textContent = "🌙";
-            }
+            let theme = "dark";
+            try { theme = localStorage.getItem("cyberTheme") || "dark"; } catch (error) { /* Use the default theme when storage is unavailable. */ }
+            setTheme(theme);
         }
 
 
