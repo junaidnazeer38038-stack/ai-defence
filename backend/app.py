@@ -1105,7 +1105,34 @@ def ask_groq(prompt):
     return None
 
 
+ROMAN_URDU_MARKERS = {
+    "ma", "main", "mein", "mera", "meri", "mere", "hum", "ham", "tum", "ap", "aap",
+    "ka", "ki", "ky", "ko", "sy", "se", "ha", "hai", "hy", "hain", "ho", "hun", "hoon",
+    "tha", "thi", "the", "raha", "rahi", "rahay", "rha", "rhi", "kya", "kia", "kiya", "kun",
+    "kyun", "kion", "kese", "kaise", "kasy", "kaisay", "kr", "kar", "karo", "kry", "karna",
+    "karta", "karte", "chahiye", "chahye", "nahi", "nai", "ni", "nahin", "mujhe", "mujhy", "muja",
+    "kuch", "koi", "sab", "acha", "achha", "theek", "thik", "sahi", "galat", "batao", "batana",
+    "btao", "samjha", "samajh", "samjh", "kahan", "kidhar", "kab", "ab", "phir", "or", "aur", "yeh",
+    "wo", "woh", "wala", "wali", "waly", "jaisa", "jesa", "liye", "chalo", "jaldi", "sakta", "sakti",
+    "sakte", "gaya", "gayi", "gya", "gyi"
+}
+
+
+def answer_language_instruction(message):
+    if re.search(r"[\u0600-\u06FF]", message):
+        return "Answer in natural Urdu using Urdu script. Keep technical terms simple and explain them briefly."
+
+    words = re.findall(r"[a-z]+", message.lower())
+    marker_count = sum(1 for word in words if word in ROMAN_URDU_MARKERS)
+    if marker_count >= 2 or (marker_count == 1 and len(words) <= 4):
+        return "Answer in natural Roman Urdu: Urdu language written with English/Latin letters. Do not use Urdu script. Keep technical terms simple and explain them briefly."
+
+    return "Answer in clear, natural English. Keep technical terms simple and explain them briefly."
+
+
 def ask_ai(prompt):
+
+    prompt = f"{prompt}\n\n{answer_language_instruction(prompt)}"
 
     answer = ask_groq(
         prompt
