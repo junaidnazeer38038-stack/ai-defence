@@ -432,12 +432,17 @@
         .auth-form label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; }
         .auth-form label[hidden] { display: none; }
         .auth-form input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--input); color: var(--text); }
+        .password-field-wrap { display:flex; align-items:center; gap:6px; }
+        .password-field-wrap input { min-width:0; flex:1; }
+        .password-toggle { flex:0 0 auto; padding:9px 10px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--primary); cursor:pointer; font-size:11px; }
         .auth-switch { width: 100%; margin-top: 15px; border: 0; background: transparent; color: var(--primary); cursor: pointer; font-size: 12px; }
         .auth-status { min-height: 20px; margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
         .auth-account { display: none; align-items: center; gap: 9px; color: var(--muted); font-size: 12px; }
         .auth-account.visible { display: flex; }
         .auth-account-email { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .auth-signout { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); cursor: pointer; font-size: 11px; }
+        .auth-profile-btn { padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); cursor:pointer; font-size:11px; }
+        .language-select { padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); font-size:11px; }
         .admin-table-wrap { overflow-x: auto; }
         .admin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .admin-table th, .admin-table td { padding: 11px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
@@ -1166,6 +1171,15 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 .overview-status-warning .dot, .dot.status-warning { background:#f59e0b !important; box-shadow:0 0 8px rgba(245,158,11,.5); }
 .service-status-list { display:grid; gap:2px; }
 .service-status-list .alert { margin-bottom:7px; }
+.workspace-tool-badge { width:44px; height:44px; font-size:22px; border-radius:13px; }
+#workspaceTools { grid-template-columns:repeat(2,minmax(0,1fr)); }
+body.urdu { direction:rtl; font-family:Tahoma,"Noto Naskh Arabic",sans-serif; }
+body.urdu .sidebar { text-align:right; }
+body.urdu .nav-btn { text-align:right; }
+body.urdu .workspace-tool { text-align:right; }
+body.urdu .workspace-tool-open { align-self:flex-start; }
+body.urdu .workspace-search label, body.urdu .auth-form label { text-align:right; }
+@media(max-width:760px){#workspaceTools{grid-template-columns:1fr}}
 body.light .overview-hero { background:linear-gradient(115deg,#e2f5ff,#edf2ff 62%,#f1edff); }
 body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { color:#50667c; }
 @media(max-width:760px){.overview-hero{padding:21px}.risk-row{grid-template-columns:68px minmax(40px,1fr) 28px}}
@@ -1183,8 +1197,8 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             <form class="auth-form" id="authForm" onsubmit="submitAuthForm(event)">
                 <label id="authUsernameField" hidden>Username (visible only to you and admin)<input id="authUsername" type="text" autocomplete="nickname" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" placeholder="e.g. junaid_01"></label>
                 <label id="authEmailField">Email address<input id="authEmail" type="email" autocomplete="email" maxlength="320" required></label>
-                <label id="authPasswordField">Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" maxlength="256" required></label>
-                <label id="authConfirmPasswordField" hidden>Confirm new password<input id="authPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="256"></label>
+                <label id="authPasswordField">Password<span class="password-field-wrap"><input id="authPassword" type="password" autocomplete="current-password" minlength="8" maxlength="256" required><button class="password-toggle" type="button" onclick="togglePasswordVisibility('authPassword', this)" aria-label="Show password">Show</button></span></label>
+                <label id="authConfirmPasswordField" hidden>Confirm new password<span class="password-field-wrap"><input id="authPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="256"><button class="password-toggle" type="button" onclick="togglePasswordVisibility('authPasswordConfirm', this)" aria-label="Show password">Show</button></span></label>
                 <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
             </form>
             <button class="auth-switch" id="forgotPasswordButton" type="button" onclick="showForgotPassword()">Forgot password?</button>
@@ -1281,10 +1295,16 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                     <span id="headerStatusText">Checking services…</span>
                 </div>
 
+                <select class="language-select" id="languageSelect" aria-label="Language" onchange="setLanguage(this.value)">
+                    <option value="en">English</option>
+                    <option value="ur">اردو</option>
+                </select>
+
                 <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">
                     ☀️
                 </button>
                 <div class="auth-account" id="authAccount">
+                    <button class="auth-profile-btn" type="button" onclick="showPage('profile')"><span data-i18n="profile">Profile</span></button>
                     <span class="auth-account-email" id="authAccountName"></span>
                     <button class="auth-signout" type="button" onclick="signOut()">Sign out</button>
                 </div>
@@ -1329,61 +1349,61 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
 
                 <div class="grid grid-3" id="workspaceTools">
                     <button class="card workspace-tool" type="button" data-category="assist" data-search="ai security assistant chat help cybersecurity" onclick="openTool('chat')">
-                        <span class="workspace-tool-badge" aria-hidden="true">AI</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">🤖</span>
                         <h3>Ask the AI assistant</h3>
                         <p>Get clear guidance about online safety.</p>
                         <span class="workspace-tool-open">Ask a question &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="scan" data-search="url website link scanner safety phishing risk" onclick="openTool('url')">
-                        <span class="workspace-tool-badge" aria-hidden="true">URL</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">🔗</span>
                         <h3>Check a website link</h3>
                         <p>Look for common warning signs in a link.</p>
                         <span class="workspace-tool-open">Check a link &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="scan" data-search="file upload document scanner malware hash" onclick="openTool('file')">
-                        <span class="workspace-tool-badge" aria-hidden="true">FILE</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">📁</span>
                         <h3>Review a file</h3>
                         <p>Check its file type, size, and basic details.</p>
                         <span class="workspace-tool-open">Choose a file &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="scan" data-search="phishing message email suspicious text detector" onclick="openTool('phishing')">
-                        <span class="workspace-tool-badge" aria-hidden="true">MAIL</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">✉️</span>
                         <h3>Check a suspicious message</h3>
                         <p>Look for signs of a fake or unsafe message.</p>
                         <span class="workspace-tool-open">Check a message &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="protect" data-search="password strength checker safe" onclick="openTool('password')">
-                        <span class="workspace-tool-badge" aria-hidden="true">KEY</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">🔑</span>
                         <h3>Check password strength</h3>
                         <p>Check it privately. Passwords are not saved.</p>
                         <span class="workspace-tool-open">Open checker &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="scan" data-search="ip domain dns network lookup intelligence" onclick="openTool('ip')">
-                        <span class="workspace-tool-badge" aria-hidden="true">IP</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">🌐</span>
                         <h3>Website or IP details</h3>
                         <p>Look up basic public domain and network details.</p>
                         <span class="workspace-tool-open">Open lookup &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="review" data-search="security report generate findings recommendations pdf" onclick="openTool('report')">
-                        <span class="workspace-tool-badge" aria-hidden="true">RPT</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">📄</span>
                         <h3>Create a security report</h3>
                         <p>Turn your findings into a clear report.</p>
                         <span class="workspace-tool-open">Create a report &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="review" data-search="threat alerts news security awareness" onclick="openTool('alerts')">
-                        <span class="workspace-tool-badge" aria-hidden="true">ALERT</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">🚨</span>
                         <h3>Security alerts</h3>
                         <p>Read useful online safety updates.</p>
                         <span class="workspace-tool-open">View alerts &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="review" data-search="dashboard activity risk recent scans security center" onclick="openTool('dashboard')">
-                        <span class="workspace-tool-badge" aria-hidden="true">DASH</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">📊</span>
                         <h3>Activity dashboard</h3>
                         <p>See your recent checks and risk summaries.</p>
                         <span class="workspace-tool-open">Open dashboard &rarr;</span>
                     </button>
                     <button class="card workspace-tool" type="button" data-category="review" data-search="history past scans saved results activity" onclick="openTool('history')">
-                        <span class="workspace-tool-badge" aria-hidden="true">LOG</span>
+                        <span class="workspace-tool-badge" aria-hidden="true">🗂️</span>
                         <h3>Past checks</h3>
                         <p>Review your saved checks and results.</p>
                         <span class="workspace-tool-open">Open history &rarr;</span>
@@ -1394,10 +1414,10 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                         <p>Rate the project and read reviews from everyone.</p>
                         <span class="workspace-tool-open">View feedback &rarr;</span>
                     </button>
-                    <button class="card workspace-tool" type="button" data-category="assist" data-search="learning phishing quiz cybersecurity simulation safe" onclick="openTool('learning')"><span class="workspace-tool-badge">LEARN</span><h3>Practice online safety</h3><p>Try a short phishing awareness quiz.</p><span class="workspace-tool-open">Start quiz &rarr;</span></button>
-                    <button class="card workspace-tool" type="button" data-category="assist" data-search="ai benchmark quality test performance response" onclick="openTool('quality')"><span class="workspace-tool-badge">QA</span><h3>Check AI response</h3><p>See whether AI is available and how quickly it replies.</p><span class="workspace-tool-open">Check AI &rarr;</span></button>
-                    <button class="card workspace-tool" type="button" data-category="scan" data-search="screen screenshot visual computer analysis" onclick="openTool('screen')"><span class="workspace-tool-badge">SCREEN</span><h3>Check a screen image</h3><p>Choose one screen or window to review for visible warnings.</p><span class="workspace-tool-open">Review an image &rarr;</span></button>
-                    <button class="card workspace-tool" type="button" data-category="scan" data-search="agent autonomous guided security review domain url defensive authorized" onclick="openTool('guidedReview')"><span class="workspace-tool-badge">GUIDE</span><h3>Review your website</h3><p>Run the link and domain checks together.</p><span class="workspace-tool-open">Start website check &rarr;</span></button>
+                    <button class="card workspace-tool" type="button" data-category="assist" data-search="learning phishing quiz cybersecurity simulation safe" onclick="openTool('learning')"><span class="workspace-tool-badge">🎓</span><h3>Practice online safety</h3><p>Try a short phishing awareness quiz.</p><span class="workspace-tool-open">Start quiz &rarr;</span></button>
+                    <button class="card workspace-tool" type="button" data-category="assist" data-search="ai benchmark quality test performance response" onclick="openTool('quality')"><span class="workspace-tool-badge">🧪</span><h3>Check AI response</h3><p>See whether AI is available and how quickly it replies.</p><span class="workspace-tool-open">Check AI &rarr;</span></button>
+                    <button class="card workspace-tool" type="button" data-category="scan" data-search="screen screenshot visual computer analysis" onclick="openTool('screen')"><span class="workspace-tool-badge">🖥️</span><h3>Check a screen image</h3><p>Choose one screen or window to review for visible warnings.</p><span class="workspace-tool-open">Review an image &rarr;</span></button>
+                    <button class="card workspace-tool" type="button" data-category="scan" data-search="agent autonomous guided security review domain url defensive authorized" onclick="openTool('guidedReview')"><span class="workspace-tool-badge">🧭</span><h3>Review your website</h3><p>Run the link and domain checks together.</p><span class="workspace-tool-open">Start website check &rarr;</span></button>
                 </div>
 
                 <div class="empty" id="workspaceEmpty" hidden>No tools found. Try another word.</div>
@@ -2164,6 +2184,21 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                 <div class="card"><label for="guidedReviewTarget">Website URL</label><input id="guidedReviewTarget" type="url" placeholder="https://example.com" style="margin:8px 0 12px;width:100%;"><button class="btn btn-primary" id="guidedReviewButton" type="button" onclick="runGuidedReview()">Run URL and domain checks</button><div class="result" id="guidedReviewResult" role="status" aria-live="polite"></div></div>
             </div>
 
+            <div class="page" id="profile">
+                <div class="welcome"><div><h2 data-i18n="profileTitle">Your profile</h2><p data-i18n="profileDescription">Change the username shown in your account.</p></div></div>
+                <div class="card" style="max-width:620px">
+                    <form class="auth-form" onsubmit="saveProfile(event)">
+                        <label for="profileEmail" data-i18n="emailAddress">Email address</label>
+                        <input id="profileEmail" type="email" readonly aria-readonly="true">
+                        <label for="profileUsername" data-i18n="username">Username</label>
+                        <input id="profileUsername" type="text" autocomplete="nickname" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" required>
+                        <small class="feedback-meta" data-i18n="usernameHelp">3–24 characters: letters, numbers, dot, underscore, or hyphen.</small>
+                        <button class="btn btn-primary" id="saveProfileButton" type="submit" data-i18n="saveProfile">Save profile</button>
+                    </form>
+                    <p class="auth-status" id="profileStatus" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+
             <div class="page" id="adminUsers">
                 <div class="card">
                     <div class="card-title"><h3>Registered users</h3><button class="btn btn-secondary" type="button" onclick="loadAdminUsers()">Refresh</button></div>
@@ -2255,6 +2290,8 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             screen: ["Screen Snapshot Review", "Analyze one frame you explicitly choose"],
             guidedReview: ["Guided Security Review", "Run approved checks on a website"],
 
+            profile: ["Your profile", "Update your account name"],
+
             about: [
                 "About Project",
                 "Cyber Security AI project information"
@@ -2302,6 +2339,105 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
 
         let authMode = "login";
         let authIsRequired = false;
+        let currentAuthUser = null;
+        let currentLanguage = "en";
+        const originalUiText = new WeakMap();
+
+        const englishToUrdu = {
+            "Overview": "جائزہ", "Your security activity and service status": "آپ کی سکیورٹی سرگرمیاں اور سروس کی حالت",
+            "All tools": "تمام ٹولز", "Find the right security tool for your task": "اپنے کام کے لیے سکیورٹی ٹول تلاش کریں",
+            "AI Assistant": "اے آئی معاون", "Security alerts": "سکیورٹی الرٹس", "Past scans": "پچھلے اسکین",
+            "Feedback": "رائے", "About": "تعارف", "Sign out": "لاگ آؤٹ", "Profile": "پروفائل",
+            "Your security workspace": "آپ کی سکیورٹی ورک اسپیس", "See your scan activity, understand risk levels, and open a tool when you need it.": "اپنے اسکین اور خطرے کی سطح دیکھیں، اور ضرورت کے مطابق ٹول کھولیں۔",
+            "Ask the AI assistant": "اے آئی معاون سے پوچھیں", "Check a website": "ویب سائٹ چیک کریں", "Check a message": "پیغام چیک کریں", "Browse all tools": "تمام ٹولز دیکھیں",
+            "Checks completed": "مکمل کیے گئے چیک", "High or critical risk": "زیادہ یا سنگین خطرہ", "Average risk score": "اوسط خطرے کا اسکور", "AI providers ready": "تیار اے آئی سروسز",
+            "Risk distribution": "خطرے کی تقسیم", "Based on your saved scan results": "آپ کے محفوظ اسکین کی بنیاد پر", "Service status": "سروس کی حالت", "Live response from this app": "ایپ کی موجودہ حالت",
+            "Recent Security Activity": "حالیہ سکیورٹی سرگرمی", "Latest scans": "تازہ اسکین", "Security Tips": "سکیورٹی مشورے", "Recommended practices": "تجویز کردہ طریقے",
+            "Critical": "سنگین", "High": "زیادہ", "Medium": "درمیانہ", "Low": "کم",
+            "Your profile": "آپ کا پروفائل", "Change the username shown in your account.": "اپنے اکاؤنٹ میں دکھایا جانے والا نام تبدیل کریں۔",
+            "Email address": "ای میل ایڈریس", "Username": "یوزر نیم", "Save profile": "پروفائل محفوظ کریں",
+            "3–24 characters: letters, numbers, dot, underscore, or hyphen.": "3 سے 24 حروف: انگریزی حروف، نمبر، نقطہ، انڈر اسکور یا ہائفن۔",
+            "Show": "دکھائیں", "Hide": "چھپائیں", "Password": "پاس ورڈ", "Confirm new password": "نئے پاس ورڈ کی تصدیق",
+            "Home": "ہوم", "Choose what you want to do": "منتخب کریں کہ آپ کیا کرنا چاہتے ہیں",
+            "What would you like to do?": "آپ کیا کرنا چاہتے ہیں؟",
+            "Check a website link": "ویب سائٹ کا لنک چیک کریں", "Look for common warning signs in a link.": "لنک میں عام خطرے کی نشانیاں تلاش کریں۔",
+            "Review a file": "فائل کا جائزہ لیں", "Check its file type, size, and basic details.": "فائل کی قسم، سائز اور بنیادی تفصیل چیک کریں۔",
+            "Check a suspicious message": "مشکوک پیغام چیک کریں", "Look for signs of a fake or unsafe message.": "جعلی یا غیر محفوظ پیغام کی نشانیاں تلاش کریں۔",
+            "Check password strength": "پاس ورڈ کی مضبوطی چیک کریں", "Website or IP details": "ویب سائٹ یا آئی پی کی تفصیل",
+            "Create a security report": "سکیورٹی رپورٹ بنائیں", "Practice online safety": "آن لائن حفاظت سیکھیں", "Review your website": "اپنی ویب سائٹ کا جائزہ لیں",
+            "No saved scan results yet. Run a check to see risk levels.": "ابھی کوئی محفوظ اسکین نہیں۔ خطرے کی سطح دیکھنے کے لیے چیک چلائیں۔",
+            "Find a tool": "ٹول تلاش کریں", "Check links and files": "لنک اور فائل چیک کریں", "Protect accounts": "اکاؤنٹس محفوظ کریں",
+            "AI and learning": "اے آئی اور سیکھنا", "Reports and activity": "رپورٹس اور سرگرمی",
+            "Try a short phishing awareness quiz.": "فشنگ کے بارے میں مختصر کوئز حل کریں۔", "Start quiz →": "کوئز شروع کریں →",
+            "See whether AI is available and how quickly it replies.": "دیکھیں اے آئی دستیاب ہے اور کتنی جلد جواب دیتی ہے۔",
+            "Sign in": "سائن اِن", "Create your account": "اکاؤنٹ بنائیں", "New here? Create an account": "نئے ہیں؟ اکاؤنٹ بنائیں",
+            "Already registered? Sign in": "پہلے سے اکاؤنٹ ہے؟ سائن اِن کریں", "Forgot password?": "پاس ورڈ بھول گئے؟",
+            "Send reset link": "ری سیٹ لنک بھیجیں", "Create account": "اکاؤنٹ بنائیں", "Update your account name": "اپنے اکاؤنٹ کا نام تبدیل کریں"
+        };
+
+        function setLanguage(language) {
+            currentLanguage = language === "ur" ? "ur" : "en";
+            try { localStorage.setItem("cyberLanguage", currentLanguage); } catch (error) { /* Language preference is optional. */ }
+            document.documentElement.lang = currentLanguage;
+            document.documentElement.dir = currentLanguage === "ur" ? "rtl" : "ltr";
+            document.body.classList.toggle("urdu", currentLanguage === "ur");
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+                if (!originalUiText.has(node)) originalUiText.set(node, node.nodeValue || "");
+                const original = originalUiText.get(node);
+                const trimmed = original.trim();
+                const translated = currentLanguage === "ur" ? englishToUrdu[trimmed] : trimmed;
+                if (translated) node.nodeValue = original.replace(trimmed, translated);
+            }
+            document.querySelectorAll(".password-toggle").forEach(button => {
+                const field = button.parentElement.querySelector("input");
+                const showing = field.type === "text";
+                const label = showing ? "Hide" : "Show";
+                button.textContent = currentLanguage === "ur" ? (showing ? "چھپائیں" : "دکھائیں") : label;
+                button.setAttribute("aria-label", `${label} password`);
+            });
+            document.getElementById("languageSelect").value = currentLanguage;
+            const placeholders = currentLanguage === "ur"
+                ? { toolSearch: "لنک، پیغام، پاس ورڈ یا رپورٹ تلاش کریں...", guidedReviewTarget: "https://example.com" }
+                : { toolSearch: "Try link, message, password, report...", guidedReviewTarget: "https://example.com" };
+            Object.entries(placeholders).forEach(([id, placeholder]) => {
+                const field = document.getElementById(id);
+                if (field) field.placeholder = placeholder;
+            });
+        }
+
+        function togglePasswordVisibility(inputId, button) {
+            const field = document.getElementById(inputId);
+            const showing = field.type === "password";
+            field.type = showing ? "text" : "password";
+            const label = showing ? "Hide" : "Show";
+            button.textContent = currentLanguage === "ur" ? (showing ? "چھپائیں" : "دکھائیں") : label;
+            button.setAttribute("aria-label", `${label} password`);
+        }
+
+        async function saveProfile(event) {
+            event.preventDefault();
+            const button = document.getElementById("saveProfileButton");
+            const status = document.getElementById("profileStatus");
+            const username = document.getElementById("profileUsername").value.trim();
+            button.disabled = true;
+            status.textContent = currentLanguage === "ur" ? "محفوظ ہو رہا ہے…" : "Saving profile…";
+            try {
+                const data = await safeFetchJSON("/api/auth/profile", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username })
+                });
+                currentAuthUser = data.user;
+                document.getElementById("authAccountName").textContent = username;
+                status.textContent = currentLanguage === "ur" ? "پروفائل محفوظ ہوگیا۔" : (data.message || "Profile saved.");
+            } catch (error) {
+                status.textContent = error.message;
+            } finally {
+                button.disabled = false;
+            }
+        }
 
         function setAuthMode(mode) {
             authMode = mode;
@@ -2337,6 +2473,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             document.getElementById("authConfirmPasswordField").hidden = !reset;
             document.getElementById("authPasswordConfirm").required = reset;
             document.getElementById("authStatus").textContent = "";
+            setLanguage(currentLanguage);
         }
 
         function toggleAuthMode() {
@@ -2353,6 +2490,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
 
         function showAuthenticatedUser(user, isAdmin) {
             document.getElementById("authOverlay").hidden = true;
+            currentAuthUser = user || null;
             const account = document.getElementById("authAccount");
             const email = user && user.email ? user.email : "";
             account.classList.toggle("visible", Boolean(email));
@@ -2360,6 +2498,8 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             const accountName = document.getElementById("authAccountName");
             accountName.textContent = username || email;
             accountName.title = email;
+            document.getElementById("profileEmail").value = email;
+            document.getElementById("profileUsername").value = username;
             const adminNav = document.getElementById("adminUsersNav");
             adminNav.hidden = !isAdmin;
             loadDashboard();
@@ -2536,6 +2676,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                 return action.includes(`showPage('${pageId}', this)`);
             }) || document.querySelector('.nav-btn[onclick="showPage(\'dashboard\', this)"]');
             if (activeButton) activeButton.classList.add("active");
+            if (pageId === "profile" && activeButton) activeButton.classList.remove("active");
 
             if (titles[pageId]) {
 
@@ -2567,7 +2708,14 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                 loadAdminUsers();
             }
 
+            if (pageId === "profile") {
+                document.getElementById("profileEmail").value = currentAuthUser && currentAuthUser.email || "";
+                document.getElementById("profileUsername").value = currentAuthUser && currentAuthUser.username || "";
+                document.getElementById("profileStatus").textContent = "";
+            }
+
             document.getElementById("sidebar").classList.remove("open");
+            setLanguage(currentLanguage);
         }
 
 
@@ -4298,6 +4446,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                     <div class="alert"><div class="alert-title">Dashboard unavailable</div><p>${escapeHTML(error.message)}</p></div>
                 `;
             }
+            setLanguage(currentLanguage);
         }
 
 
@@ -4437,6 +4586,9 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             () => {
 
                 loadTheme();
+                let savedLanguage = "en";
+                try { savedLanguage = localStorage.getItem("cyberLanguage") || "en"; } catch (error) { /* Use English by default. */ }
+                setLanguage(savedLanguage);
                 initializeAuth();
                 loadApiStatus();
                 renderQuiz();

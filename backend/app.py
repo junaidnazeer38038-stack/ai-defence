@@ -1301,6 +1301,30 @@ def auth_logout():
     return jsonify({"success": True, "message": "Signed out."})
 
 
+@app.route("/api/auth/profile", methods=["PUT"])
+def auth_update_profile():
+    payload = request.get_json(silent=True)
+    username = payload.get("username") if isinstance(payload, dict) else None
+    if not isinstance(username, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{3,24}", username.strip()):
+        return jsonify({"success": False, "error": "Username must be 3–24 characters using letters, numbers, dots, underscores, or hyphens."}), 400
+
+    access_token = getattr(g, "auth_access_token", "")
+    if not access_token:
+        return jsonify({"success": False, "error": "Your session expired. Sign in again and retry."}), 401
+
+    status, user = supabase_auth_request(
+        "PUT",
+        "user",
+        {"data": {"username": username.strip()}},
+        access_token=access_token
+    )
+    if status != 200 or not isinstance(user, dict):
+        return jsonify({"success": False, "error": "Could not update your profile. Please sign in again and retry."}), 400
+
+    g.auth_user = user
+    return jsonify({"success": True, "user": auth_user_summary(user), "message": "Username updated."})
+
+
 @app.route("/api/auth/recover", methods=["POST"])
 def auth_recover():
 
