@@ -188,6 +188,7 @@ def get_current_auth_user():
             "GET", "user", access_token=access_token
         )
         if status == 200 and isinstance(user, dict) and user.get("id"):
+            g.auth_access_token = access_token
             return user
 
     if refresh_token:
@@ -198,6 +199,7 @@ def get_current_auth_user():
         )
         if status == 200 and isinstance(session, dict):
             set_auth_session(session)
+            g.auth_access_token = session.get("access_token", "")
             user = session.get("user")
             if isinstance(user, dict) and user.get("id"):
                 return user
@@ -217,6 +219,7 @@ def require_authenticated_user():
             "/api/auth/session",
             "/api/auth/signup",
             "/api/auth/login",
+            "/api/auth/recover",
             "/api/auth/logout"
         }
         or not supabase_auth_enabled()
@@ -1281,6 +1284,59 @@ def auth_logout():
 
     g.clear_auth_session = True
     return jsonify({"success": True, "message": "Signed out."})
+
+
+@app.route("/api/auth/recover", methods=["POST"])
+def auth_recover():
+
+    if not supabase_auth_enabled():
+        return jsonify({"success": False, "error": "Password reset is not configured yet."}), 503
+
+    payload = request.get_json(silent=True)
+    email = payload.get("email") if isinstance(payload, dict) else None
+    if not isinstance(email, str) or "@" not in email or len(email) > 320:
+        return jsonify({"success": False, "error": "Enter a valid email address."}), 400
+
+    status, _ = supabase_auth_request(
+        "POST",
+        "recover",
+        {"email": email.strip().lower()}
+    )
+    if status == 429:
+        return jsonify({"success": False, "error": "Too many reset requests. Wait a while before trying again."}), 429
+    if status in (401, 403) or status is None:
+        return jsonify({"success": False, "error": "Password reset is temporarily unavailable. Check server Auth configuration."}), 503
+
+    # Keep the response the same whether or not the address belongs to an account.
+    return jsonify({
+        "success": True,
+        "message": "If an account uses this email, a password reset link will arrive shortly. Check Spam/Junk too."
+    })
+
+
+@app.route("/api/auth/password", methods=["POST"])
+def auth_update_password():
+
+    payload = request.get_json(silent=True)
+    password = payload.get("password") if isinstance(payload, dict) else None
+    if not isinstance(password, str) or len(password) < 8 or len(password) > 256:
+        return jsonify({"success": False, "error": "Use a password with at least 8 characters."}), 400
+
+    access_token = getattr(g, "auth_access_token", "")
+    if not access_token:
+        return jsonify({"success": False, "error": "The reset link expired. Request a new password reset email."}), 401
+
+    status, _ = supabase_auth_request(
+        "PUT",
+        "user",
+        {"password": password},
+        access_token=access_token
+    )
+    if status != 200:
+        return jsonify({"success": False, "error": "Could not update the password. The reset link may have expired; request a new one."}), 400
+
+    g.clear_auth_session = True
+    return jsonify({"success": True, "message": "Password updated. Sign in with your new password."})
 
 
 @app.route("/api/admin/users", methods=["GET"])

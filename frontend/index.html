@@ -430,7 +430,7 @@
         .auth-card > p { margin-bottom: 20px; color: var(--muted); font-size: 13px; line-height: 1.6; }
         .auth-form { display: grid; gap: 13px; }
         .auth-form label { display: grid; gap: 7px; color: var(--muted); font-size: 12px; }
-        #authUsernameField[hidden] { display: none; }
+        .auth-form label[hidden] { display: none; }
         .auth-form input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--input); color: var(--text); }
         .auth-switch { width: 100%; margin-top: 15px; border: 0; background: transparent; color: var(--primary); cursor: pointer; font-size: 12px; }
         .auth-status { min-height: 20px; margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.5; }
@@ -1075,10 +1075,12 @@ textarea { min-height: 105px; }
             <p id="authDescription">Sign in to use the Cyber Security AI workspace.</p>
             <form class="auth-form" id="authForm" onsubmit="submitAuthForm(event)">
                 <label id="authUsernameField" hidden>Username (visible only to you and admin)<input id="authUsername" type="text" autocomplete="nickname" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" placeholder="e.g. junaid_01"></label>
-                <label>Email address<input id="authEmail" type="email" autocomplete="email" maxlength="320" required></label>
-                <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" maxlength="256" required></label>
+                <label id="authEmailField">Email address<input id="authEmail" type="email" autocomplete="email" maxlength="320" required></label>
+                <label id="authPasswordField">Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" maxlength="256" required></label>
+                <label id="authConfirmPasswordField" hidden>Confirm new password<input id="authPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="256"></label>
                 <button class="btn btn-primary" id="authSubmit" type="submit">Sign in</button>
             </form>
+            <button class="auth-switch" id="forgotPasswordButton" type="button" onclick="showForgotPassword()">Forgot password?</button>
             <button class="auth-switch" id="authSwitch" type="button" onclick="toggleAuthMode()">New here? Create an account</button>
             <p class="auth-status" id="authStatus" role="status" aria-live="polite"></p>
         </div>
@@ -2126,22 +2128,52 @@ textarea { min-height: 105px; }
         let authMode = "login";
         let authIsRequired = false;
 
-        function toggleAuthMode() {
-            authMode = authMode === "login" ? "signup" : "login";
-            const signup = authMode === "signup";
-            document.getElementById("authTitle").textContent = signup ? "Create your account" : "Sign in";
+        function setAuthMode(mode) {
+            authMode = mode;
+            const signup = mode === "signup";
+            const forgot = mode === "forgot";
+            const reset = mode === "reset";
+            const login = mode === "login";
+            document.getElementById("authTitle").textContent = signup
+                ? "Create your account"
+                : forgot ? "Reset your password" : reset ? "Choose a new password" : "Sign in";
             document.getElementById("authDescription").textContent = signup
                 ? "Create an account with your email and a username. We will send a verification link before sign-in."
-                : "Sign in to use the Cyber Security AI workspace.";
-            document.getElementById("authSubmit").textContent = signup ? "Create account" : "Sign in";
+                : forgot
+                    ? "Enter your account email and we will send a password reset link if it is registered."
+                    : reset
+                        ? "Choose a new password for your account."
+                        : "Sign in to use the Cyber Security AI workspace.";
+            document.getElementById("authSubmit").textContent = signup
+                ? "Create account"
+                : forgot ? "Send reset link" : reset ? "Update password" : "Sign in";
             document.getElementById("authSwitch").textContent = signup
                 ? "Already registered? Sign in"
-                : "New here? Create an account";
-            document.getElementById("authPassword").autocomplete = signup ? "new-password" : "current-password";
-            const usernameField = document.getElementById("authUsernameField");
-            usernameField.hidden = !signup;
+                : forgot ? "Back to sign in" : "New here? Create an account";
+            document.getElementById("authSwitch").hidden = reset;
+            document.getElementById("forgotPasswordButton").hidden = !login;
+            document.getElementById("authUsernameField").hidden = !signup;
             document.getElementById("authUsername").required = signup;
+            document.getElementById("authEmailField").hidden = reset;
+            document.getElementById("authEmail").required = !reset;
+            document.getElementById("authPasswordField").hidden = forgot;
+            document.getElementById("authPassword").required = !forgot;
+            document.getElementById("authPassword").autocomplete = signup || reset ? "new-password" : "current-password";
+            document.getElementById("authConfirmPasswordField").hidden = !reset;
+            document.getElementById("authPasswordConfirm").required = reset;
             document.getElementById("authStatus").textContent = "";
+        }
+
+        function toggleAuthMode() {
+            if (authMode === "forgot" || authMode === "reset") {
+                setAuthMode("login");
+                return;
+            }
+            setAuthMode(authMode === "login" ? "signup" : "login");
+        }
+
+        function showForgotPassword() {
+            setAuthMode("forgot");
         }
 
         function showAuthenticatedUser(user, isAdmin) {
@@ -2161,6 +2193,7 @@ textarea { min-height: 105px; }
         }
 
         function requireSignIn(message) {
+            setAuthMode("login");
             document.getElementById("authOverlay").hidden = false;
             document.getElementById("authAccount").classList.remove("visible");
             document.getElementById("adminUsersNav").hidden = true;
@@ -2172,6 +2205,7 @@ textarea { min-height: 105px; }
                 const fragment = new URLSearchParams(window.location.hash.slice(1));
                 const accessToken = fragment.get("access_token");
                 const refreshToken = fragment.get("refresh_token");
+                const recoveryFlow = fragment.get("type") === "recovery";
                 if (accessToken || refreshToken) {
                     window.history.replaceState(null, "", window.location.pathname + window.location.search);
                     if (accessToken && refreshToken) {
@@ -2180,6 +2214,11 @@ textarea { min-height: 105px; }
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken })
                         });
+                        if (recoveryFlow) {
+                            setAuthMode("reset");
+                            document.getElementById("authStatus").textContent = "Reset link verified. Choose a new password.";
+                            return;
+                        }
                         document.getElementById("authStatus").textContent = "Email verified. You are signed in.";
                     }
                 }
@@ -2200,18 +2239,44 @@ textarea { min-height: 105px; }
             event.preventDefault();
             const status = document.getElementById("authStatus");
             const button = document.getElementById("authSubmit");
+            if (authMode === "reset" && document.getElementById("authPassword").value !== document.getElementById("authPasswordConfirm").value) {
+                status.textContent = "The new passwords do not match.";
+                return;
+            }
             status.textContent = authMode === "signup" ? "Creating account…" : "Signing in…";
             button.disabled = true;
             try {
-                const data = await safeFetchJSON(authMode === "signup" ? "/api/auth/signup" : "/api/auth/login", {
+                const endpoint = authMode === "signup"
+                    ? "/api/auth/signup"
+                    : authMode === "forgot"
+                        ? "/api/auth/recover"
+                        : authMode === "reset" ? "/api/auth/password" : "/api/auth/login";
+                const payload = authMode === "reset"
+                    ? {}
+                    : { email: document.getElementById("authEmail").value.trim() };
+                if (authMode === "signup") {
+                    payload.username = document.getElementById("authUsername").value.trim();
+                    payload.password = document.getElementById("authPassword").value;
+                } else if (authMode === "login" || authMode === "reset") {
+                    payload.password = document.getElementById("authPassword").value;
+                }
+
+                const data = await safeFetchJSON(endpoint, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        username: authMode === "signup" ? document.getElementById("authUsername").value.trim() : undefined,
-                        email: document.getElementById("authEmail").value.trim(),
-                        password: document.getElementById("authPassword").value
-                    })
+                    body: JSON.stringify(payload)
                 });
+                if (authMode === "forgot") {
+                    status.textContent = data.message || "If the email is registered, a reset link will arrive shortly.";
+                    return;
+                }
+                if (authMode === "reset") {
+                    document.getElementById("authPassword").value = "";
+                    document.getElementById("authPasswordConfirm").value = "";
+                    setAuthMode("login");
+                    requireSignIn(data.message || "Password updated. Sign in with your new password.");
+                    return;
+                }
                 if (authMode === "signup" && !data.authenticated) {
                     status.textContent = data.message || "Check your inbox for the email verification link.";
                     return;
