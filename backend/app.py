@@ -70,9 +70,9 @@ SUPABASE_URL = os.getenv(
     ""
 ).strip().rstrip("/")
 
-SUPABASE_KEY = os.getenv(
-    "SUPABASE_KEY",
-    ""
+SUPABASE_KEY = (
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    or os.getenv("SUPABASE_KEY", "")
 ).strip()
 
 
@@ -334,6 +334,9 @@ def load_all_history():
 
 def local_load_history():
 
+    if os.getenv("VERCEL") == "1":
+        return []
+
     user_id = get_user_id()
 
     all_history = load_all_history()
@@ -353,6 +356,9 @@ def local_load_history():
 
 
 def local_save_history(entry):
+
+    if os.getenv("VERCEL") == "1":
+        return False
 
     user_id = get_user_id()
 
@@ -400,6 +406,9 @@ def local_save_history(entry):
 
 def local_clear_history():
 
+    if os.getenv("VERCEL") == "1":
+        return False
+
     user_id = get_user_id()
 
     all_history = load_all_history()
@@ -443,6 +452,9 @@ def load_history():
 
     if not supabase_enabled():
 
+        if os.getenv("VERCEL") == "1":
+            return None
+
         return local_load_history()
 
     encoded_user = urllib.parse.quote(
@@ -464,6 +476,9 @@ def load_history():
     )
 
     if result is None:
+
+        if os.getenv("VERCEL") == "1":
+            return None
 
         return local_load_history()
 
@@ -511,9 +526,7 @@ def save_history_entry(entry):
             "Supabase save failed."
         )
 
-        return local_save_history(
-            entry
-        )
+        return local_save_history(entry)
 
     return True
 
@@ -542,6 +555,9 @@ def clear_history():
     )
 
     if result is None:
+
+        if os.getenv("VERCEL") == "1":
+            return False
 
         return local_clear_history()
 
@@ -684,9 +700,7 @@ def add_history(
         "timestamp": now()
     }
 
-    save_history_entry(
-        entry
-    )
+    entry["history_saved"] = save_history_entry(entry)
 
     return entry
 
@@ -860,6 +874,19 @@ def frontend_files(path):
 )
 def api_status():
 
+    if supabase_enabled():
+        database_ready = supabase_request(
+            "GET",
+            "scan_history?select=id&limit=1"
+        ) is not None
+        database_status = "Supabase reachable" if database_ready else "Supabase unavailable"
+    elif os.getenv("VERCEL") == "1":
+        database_ready = False
+        database_status = "Unavailable"
+    else:
+        database_ready = True
+        database_status = "Local"
+
     return jsonify({
 
         "success": True,
@@ -878,11 +905,9 @@ def api_status():
 
         },
 
-        "database": (
-            "Supabase"
-            if supabase_enabled()
-            else "Local"
-        ),
+        "database": database_status,
+
+        "history_storage_reachable": database_ready,
 
         "features": {
 
@@ -1066,7 +1091,9 @@ def scan_url_api():
             # Top-level aliases keep the existing browser client compatible.
             **result,
 
-            "history_entry": entry
+            "history_entry": entry,
+
+            "history_saved": entry.get("history_saved", False)
 
         })
 
@@ -1296,7 +1323,9 @@ def scan_file():
 
             **result,
 
-            "history_entry": entry
+            "history_entry": entry,
+
+            "history_saved": entry.get("history_saved", False)
 
         })
 
@@ -1481,7 +1510,9 @@ def detect_phishing():
 
             **result,
 
-            "history_entry": entry
+            "history_entry": entry,
+
+            "history_saved": entry.get("history_saved", False)
 
         })
 
@@ -1994,7 +2025,9 @@ def ip_domain_info():
 
             "result": result,
 
-            "history_entry": entry
+            "history_entry": entry,
+
+            "history_saved": entry.get("history_saved", False)
 
         })
 
@@ -2179,6 +2212,12 @@ def get_history():
 
         history = load_history()
 
+        if history is None:
+            return jsonify({
+                "success": False,
+                "error": "History storage is unavailable. Check the Supabase table and server key."
+            }), 503
+
         return jsonify({
 
             "success": True,
@@ -2237,9 +2276,9 @@ def delete_history():
             "success": False,
 
             "error":
-                "Unable to clear history."
+                "History storage is unavailable. Check the Supabase table and server key."
 
-        }), 500
+        }), 503
 
     except Exception as e:
 
@@ -2271,6 +2310,12 @@ def security_dashboard():
     try:
 
         history = load_history()
+
+        if history is None:
+            return jsonify({
+                "success": False,
+                "error": "History storage is unavailable. Check the Supabase table and server key."
+            }), 503
 
         total_scans = len(
             history

@@ -2112,6 +2112,12 @@ textarea { min-height: 105px; }
 
             return `
 
+                ${data.history_saved === false ? `
+                    <div class="alert" style="margin-bottom:12px;">
+                        Scan completed, but history could not be saved. Check the database configuration.
+                    </div>
+                ` : ""}
+
                 ${riskHTML(data.risk_score)}
 
                 <div class="button-row">
@@ -2598,7 +2604,11 @@ textarea { min-height: 105px; }
 
                 const info = data.result || data;
 
-                const riskInfo = { ...info, risk_score: info.risk_score ?? 0 };
+                const riskInfo = {
+                    ...info,
+                    risk_score: info.risk_score ?? 0,
+                    history_saved: data.history_saved
+                };
 
                 result.innerHTML = `
 
