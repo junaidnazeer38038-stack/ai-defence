@@ -772,12 +772,27 @@ def load_public_feedback():
             return None
         return local_load_feedback()
 
-    return [
+    feedback = [
         row for row in result
         if isinstance(row, dict)
         and type(row.get("rating")) is int
         and 1 <= row["rating"] <= 5
     ]
+
+    reply_rows = supabase_request(
+        "GET",
+        "feedback_replies?select=id,feedback_id,username,is_admin,comment,created_at&order=created_at.asc&limit=5000"
+    )
+    replies_by_feedback = {}
+    if isinstance(reply_rows, list):
+        for reply in reply_rows:
+            if isinstance(reply, dict):
+                replies_by_feedback.setdefault(str(reply.get("feedback_id")), []).append(reply)
+
+    for item in feedback:
+        item["replies"] = replies_by_feedback.get(str(item.get("id")), [])
+
+    return feedback
 
 
 def save_public_feedback(rating, comment, username):
@@ -2966,6 +2981,58 @@ def submit_feedback():
         }), 503
 
     return jsonify({"success": True, "message": "Thanks for sharing your feedback."}), 201
+
+
+@app.route("/api/feedback/<int:feedback_id>/replies", methods=["POST"])
+def submit_feedback_reply(feedback_id):
+
+    user = getattr(g, "auth_user", None)
+    if not isinstance(user, dict):
+        return jsonify({"success": False, "error": "Sign in to reply to feedback."}), 401
+
+    payload = request.get_json(silent=True)
+    comment = payload.get("comment") if isinstance(payload, dict) else None
+    if not isinstance(comment, str):
+        return jsonify({"success": False, "error": "Reply must be plain text."}), 400
+    comment = comment.strip()
+    if not comment or len(comment) > 500:
+        return jsonify({"success": False, "error": "Reply must be between 1 and 500 characters."}), 400
+
+    metadata = user.get("user_metadata") if isinstance(user.get("user_metadata"), dict) else {}
+    username = metadata.get("username", "")
+    if not isinstance(username, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{3,24}", username):
+        username = "Admin" if is_admin_user(user) else "User"
+
+    result = supabase_request("POST", "feedback_replies", {
+        "feedback_id": feedback_id,
+        "username": username,
+        "is_admin": is_admin_user(user),
+        "comment": comment
+    })
+    if result is None:
+        return jsonify({
+            "success": False,
+            "error": "Reply could not be saved. Run the feedback_replies SQL update in Supabase, then retry."
+        }), 503
+
+    return jsonify({"success": True, "message": "Reply posted."}), 201
+
+
+@app.route("/api/feedback/<int:feedback_id>", methods=["DELETE"])
+def delete_feedback(feedback_id):
+
+    user = getattr(g, "auth_user", None)
+    if not isinstance(user, dict) or not is_admin_user(user):
+        return jsonify({"success": False, "error": "Admin access required."}), 403
+
+    result = supabase_request("DELETE", f"feedback?id=eq.{feedback_id}")
+    if result is None:
+        return jsonify({
+            "success": False,
+            "error": "Feedback could not be deleted. Run the latest supabase/schema.sql in Supabase, then retry."
+        }), 503
+
+    return jsonify({"success": True, "message": "Feedback deleted."})
 
 
 # ============================================================

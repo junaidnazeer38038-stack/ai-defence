@@ -421,6 +421,14 @@
         .feedback-item { padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-hover); }
         .feedback-item-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
         .feedback-comment { color: var(--text); font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .feedback-replies { display:grid; gap:9px; margin:12px 0 0 16px; padding-left:12px; border-left:2px solid var(--border); }
+        .feedback-reply { padding:9px 11px; border-radius:9px; background:var(--card); }
+        .feedback-reply p { margin:5px 0 0; font-size:12px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+        .feedback-admin-badge { display:inline-block; margin-left:6px; padding:2px 6px; border-radius:999px; background:var(--primary); color:#fff; font-size:9px; font-weight:800; vertical-align:middle; }
+        .feedback-reply-compose { display:flex; align-items:flex-end; gap:8px; margin:10px 0 0 16px; }
+        .feedback-reply-compose textarea { min-height:62px; flex:1; padding:9px 11px; border:1px solid var(--border); border-radius:9px; background:var(--input); color:var(--text); resize:vertical; }
+        .feedback-reply-compose .btn { min-height:38px; }
+        @media(max-width:560px){.feedback-reply-compose{align-items:stretch;flex-direction:column;margin-left:8px}.feedback-reply-compose .btn{align-self:flex-start}.feedback-replies{margin-left:8px;padding-left:8px}}
 
         .auth-overlay { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; padding: 20px; background: rgba(3, 10, 20, .94); backdrop-filter: blur(12px); }
         .auth-overlay[hidden] { display: none; }
@@ -1952,7 +1960,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                             <textarea id="feedbackComment" maxlength="500" placeholder="What should we keep or improve?"></textarea>
                         </div>
 
-                        <p class="feedback-meta" style="margin-bottom:14px;">Your username, rating and comment are public. Your email is not shown. Please do not include passwords, API keys, or personal information.</p>
+                        <p class="feedback-meta" style="margin-bottom:14px;">Your username, rating, comment and replies are public. Your email is not shown. Please do not include passwords, API keys, or personal information.</p>
                         <button class="btn btn-primary" id="submitFeedbackButton" type="button" onclick="submitFeedback()">Send feedback</button>
                         <p class="feedback-meta" id="feedbackFormStatus" role="status" aria-live="polite" style="margin-top:12px;"></p>
                     </div>
@@ -2360,6 +2368,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
         let authMode = "login";
         let authIsRequired = false;
         let currentAuthUser = null;
+        let currentAuthIsAdmin = false;
         let currentLanguage = "en";
         const originalUiText = new WeakMap();
 
@@ -2439,7 +2448,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             "Threat Alerts": "خطرے کے الرٹس", "Security awareness alerts and defensive recommendations.": "سکیورٹی الرٹس اور دفاعی تجاویز۔",
             "Community Feedback": "صارفین کی رائے", "Share a star rating and read feedback from other visitors.": "ریٹنگ دیں اور دوسرے صارفین کی رائے پڑھیں۔",
             "Rate this project": "اس پروجیکٹ کی ریٹنگ دیں", "Your review will be visible to everyone.": "آپ کی رائے سب کو نظر آئے گی۔",
-            "Your username, rating and comment are public. Your email is not shown. Please do not include passwords, API keys, or personal information.": "آپ کا یوزر نیم، ریٹنگ اور تبصرہ سب کو نظر آئے گا۔ ای میل نہیں دکھائی جائے گی۔ پاس ورڈ، API کی یا ذاتی معلومات شامل نہ کریں۔",
+            "Your username, rating, comment and replies are public. Your email is not shown. Please do not include passwords, API keys, or personal information.": "آپ کا یوزر نیم، ریٹنگ، تبصرہ اور جوابات سب کو نظر آئیں گے۔ ای میل نہیں دکھائی جائے گی۔ پاس ورڈ، API کی یا ذاتی معلومات شامل نہ کریں۔",
             "Your star rating": "آپ کی اسٹار ریٹنگ", "Comment (optional, up to 500 characters)": "تبصرہ (اختیاری، 500 حروف تک)",
             "What should we keep or improve?": "ہمیں کیا بہتر کرنا چاہیے؟", "Send feedback": "رائے بھیجیں", "Visitor reviews": "صارفین کے تبصرے",
             "Ratings and comments are shared with everyone.": "ریٹنگ اور تبصرے سب کے ساتھ شیئر ہوتے ہیں۔",
@@ -2589,6 +2598,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
         function showAuthenticatedUser(user, isAdmin) {
             document.getElementById("authOverlay").hidden = true;
             currentAuthUser = user || null;
+            currentAuthIsAdmin = Boolean(isAdmin);
             const account = document.getElementById("authAccount");
             const email = user && user.email ? user.email : "";
             account.classList.toggle("visible", Boolean(email));
@@ -2601,6 +2611,7 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
             const adminNav = document.getElementById("adminUsersNav");
             adminNav.hidden = !isAdmin;
             loadDashboard();
+            if (document.getElementById("feedback").classList.contains("active")) loadFeedback();
             if (!isAdmin && document.getElementById("adminUsers").classList.contains("active")) {
                 showPage("dashboard");
             } else if (!document.querySelector(".page.active")) {
@@ -2609,6 +2620,8 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
         }
 
         function requireSignIn(message) {
+            currentAuthUser = null;
+            currentAuthIsAdmin = false;
             setAuthMode("login");
             document.getElementById("authOverlay").hidden = false;
             document.getElementById("authAccount").classList.remove("visible");
@@ -4191,16 +4204,66 @@ body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { co
                 const rating = Math.min(5, Math.max(1, Number(item.rating) || 1));
                 const date = item.created_at ? new Date(item.created_at).toLocaleString() : "";
                 const username = item.username || (currentLanguage === "ur" ? "گمنام" : "Anonymous");
+                const feedbackId = Number(item.id);
+                const canReply = Number.isSafeInteger(feedbackId) && feedbackId > 0 && Boolean(currentAuthUser);
+                const replies = Array.isArray(item.replies) ? item.replies : [];
+                const deleteButton = currentAuthIsAdmin && Number.isSafeInteger(feedbackId) && feedbackId > 0
+                    ? `<button class="btn btn-danger feedback-delete" type="button" onclick="deleteFeedback(${feedbackId})">${currentLanguage === "ur" ? "حذف کریں" : "Delete"}</button>`
+                    : "";
+                const repliesHTML = replies.map(reply => {
+                    const replyName = reply.username || (currentLanguage === "ur" ? "صارف" : "User");
+                    const adminBadge = reply.is_admin ? `<span class="feedback-admin-badge">${currentLanguage === "ur" ? "ایڈمن" : "ADMIN"}</span>` : "";
+                    const replyDate = reply.created_at ? new Date(reply.created_at).toLocaleString() : "";
+                    return `<div class="feedback-reply"><strong>${escapeHTML(replyName)}</strong>${adminBadge}<time class="feedback-date">${escapeHTML(replyDate)}</time><p>${escapeHTML(reply.comment || "")}</p></div>`;
+                }).join("");
+                const replyComposer = canReply
+                    ? `<div class="feedback-reply-compose"><textarea id="feedbackReply-${feedbackId}" maxlength="500" placeholder="${currentLanguage === "ur" ? "اپنا جواب لکھیں…" : "Write a public reply…"}" aria-label="${currentLanguage === "ur" ? "جواب لکھیں" : "Write a reply"}"></textarea><button class="btn btn-secondary" type="button" onclick="submitFeedbackReply(${feedbackId})">${currentLanguage === "ur" ? "جواب دیں" : "Reply"}</button></div><p class="feedback-meta" id="feedbackReplyStatus-${feedbackId}" role="status"></p>`
+                    : "";
                 return `
                     <article class="feedback-item">
                         <div class="feedback-item-header">
                             <span><strong class="feedback-author">${escapeHTML(username)}</strong><br><span class="feedback-stars" aria-label="${rating} out of 5 stars">${"★".repeat(rating)}${"☆".repeat(5 - rating)}</span></span>
-                            <time class="feedback-date">${escapeHTML(date)}</time>
+                            <span>${deleteButton}<time class="feedback-date">${escapeHTML(date)}</time></span>
                         </div>
                         <p class="feedback-comment">${escapeHTML(item.comment || "Star rating only.")}</p>
+                        ${replies.length ? `<div class="feedback-replies">${repliesHTML}</div>` : ""}
+                        ${replyComposer}
                     </article>
                 `;
             }).join("");
+        }
+
+        async function submitFeedbackReply(feedbackId) {
+            const field = document.getElementById(`feedbackReply-${feedbackId}`);
+            const status = document.getElementById(`feedbackReplyStatus-${feedbackId}`);
+            const comment = field.value.trim();
+            if (!comment) {
+                status.textContent = currentLanguage === "ur" ? "جواب لکھیں۔" : "Write a reply first.";
+                return;
+            }
+            try {
+                await safeFetchJSON(`/api/feedback/${feedbackId}/replies`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ comment })
+                });
+                await loadFeedback();
+            } catch (error) {
+                status.textContent = error.message;
+            }
+        }
+
+        async function deleteFeedback(feedbackId) {
+            const confirmed = currentLanguage === "ur"
+                ? confirm("کیا آپ واقعی یہ فیڈبیک حذف کرنا چاہتے ہیں؟ اس کے جوابات بھی حذف ہوں گے۔")
+                : confirm("Delete this feedback and all its replies?");
+            if (!confirmed) return;
+            try {
+                await safeFetchJSON(`/api/feedback/${feedbackId}`, { method: "DELETE" });
+                await loadFeedback();
+            } catch (error) {
+                alert(error.message);
+            }
         }
 
         async function loadFeedback() {
