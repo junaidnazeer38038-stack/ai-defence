@@ -1153,6 +1153,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 @media (max-width: 560px) { .workspace-hero { padding: 23px 20px; } .quick-actions { grid-template-columns: 1fr; gap: 9px; } .quick-action { min-height: 82px; } .all-tools-panel > .workspace-search, .all-tools-panel > .workspace-filters, .all-tools-panel > #workspaceTools, .all-tools-panel > #workspaceEmpty { margin-left: 12px; margin-right: 12px; } #chat .chat-box { min-height: 320px; padding: 14px; } #chat .message { max-width: 94%; } }
 @keyframes messageArrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+.overview-hero { position:relative; overflow:hidden; padding:26px 28px; border:1px solid rgba(56,189,248,.2); border-radius:18px; background:linear-gradient(115deg,rgba(12,42,67,.94),rgba(17,31,58,.9) 62%,rgba(31,35,73,.88)); }
+.overview-hero h2 { margin:7px 0; color:#f4f9ff; font-size:clamp(22px,3vw,30px); }
+.overview-hero p { margin:0; color:#b2c6d9; }
+.overview-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:18px; }
+.overview-actions .btn { min-height:38px; }
+.risk-distribution { display:grid; gap:13px; }
+.risk-row { display:grid; grid-template-columns:76px minmax(60px,1fr) 34px; align-items:center; gap:10px; color:var(--muted); font-size:11px; }
+.risk-track { height:8px; overflow:hidden; border-radius:99px; background:rgba(148,163,184,.15); }
+.risk-fill { height:100%; min-width:0; border-radius:inherit; transition:width .45s ease; }
+.risk-critical { background:#ef4444; } .risk-high { background:#f97316; } .risk-medium { background:#eab308; } .risk-low { background:#22c55e; }
+.overview-status-warning .dot, .dot.status-warning { background:#f59e0b !important; box-shadow:0 0 8px rgba(245,158,11,.5); }
+.service-status-list { display:grid; gap:2px; }
+.service-status-list .alert { margin-bottom:7px; }
+body.light .overview-hero { background:linear-gradient(115deg,#e2f5ff,#edf2ff 62%,#f1edff); }
+body.light .overview-hero h2 { color:#10253a; } body.light .overview-hero p { color:#50667c; }
+@media(max-width:760px){.overview-hero{padding:21px}.risk-row{grid-template-columns:68px minmax(40px,1fr) 28px}}
 
     </style>
 </head>
@@ -1191,9 +1207,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
         <div class="menu-title">Start</div>
 
-        <button class="nav-btn active" onclick="showPage('workspace', this)">
+        <button class="nav-btn active" onclick="showPage('dashboard', this)">
+            <span class="nav-icon">📊</span>
+            Overview
+        </button>
+        <button class="nav-btn" onclick="showPage('workspace', this)">
             <span class="nav-icon">&#128269;</span>
-            Home
+            All tools
         </button>
         <button class="nav-btn" onclick="showPage('chat', this)">
             <span class="nav-icon" aria-hidden="true">AI</span>
@@ -1205,11 +1225,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
         <button class="nav-btn" onclick="showPage('alerts', this)">
             <span class="nav-icon">🚨</span>
             Security alerts
-        </button>
-
-        <button class="nav-btn" onclick="showPage('dashboard', this)">
-            <span class="nav-icon">📊</span>
-            Dashboard
         </button>
 
         <button class="nav-btn" onclick="showPage('history', this)">
@@ -1236,8 +1251,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
         <div class="sidebar-bottom">
             <div class="mini-status">
-                <span class="dot"></span>
-                All systems operational
+                <span class="dot" id="sidebarStatusDot"></span>
+                <span id="sidebarStatusText">Checking services…</span>
             </div>
         </div>
 
@@ -1252,18 +1267,18 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
             <div class="top-actions">
                 <button class="icon-btn mobile-menu" onclick="toggleSidebar()">☰</button>
 
-                <button class="back-home-btn" id="backHomeButton" type="button" onclick="showPage('workspace')" aria-label="Go back to home">&larr; Home</button>
+                <button class="back-home-btn" id="backHomeButton" type="button" onclick="showPage('dashboard')" aria-label="Go back to overview">&larr; Overview</button>
 
                 <div class="page-heading">
-                    <h1 id="pageTitle">Home</h1>
-                    <p id="pageSubtitle">Choose what you want to do</p>
+                    <h1 id="pageTitle">Overview</h1>
+                    <p id="pageSubtitle">Your security activity and service status</p>
                 </div>
             </div>
 
             <div class="top-actions">
                 <div class="system-status">
-                    <span class="dot"></span>
-                    System Online
+                    <span class="dot" id="headerStatusDot"></span>
+                    <span id="headerStatusText">Checking services…</span>
                 </div>
 
                 <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">
@@ -1281,7 +1296,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
             <!-- ================= CENTRAL WORKSPACE ================= -->
 
-            <div class="page active" id="workspace">
+            <div class="page" id="workspace">
 
                 <div class="welcome workspace-hero">
                     <span class="hero-kicker">CYBER SECURITY AI <span class="hero-kicker-dot"></span> YOUR SAFE STARTING POINT</span>
@@ -1704,42 +1719,64 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
             <!-- ================= DASHBOARD ================= -->
 
-            <div class="page" id="dashboard">
+            <div class="page active" id="dashboard">
 
-                <div class="welcome">
-                    <h2>Security Operations Dashboard</h2>
-                    <p>Monitor scan activity, risk levels and security features.</p>
+                <div class="overview-hero">
+                    <span class="hero-kicker"><span class="hero-kicker-dot"></span> SECURITY OVERVIEW</span>
+                    <h2>Your security workspace</h2>
+                    <p>See your scan activity, understand risk levels, and open a tool when you need it.</p>
+                    <div class="overview-actions" aria-label="Quick actions">
+                        <button class="btn btn-primary" type="button" onclick="openTool('chat')">Ask the AI assistant</button>
+                        <button class="btn btn-secondary" type="button" onclick="openTool('url')">Check a website</button>
+                        <button class="btn btn-secondary" type="button" onclick="openTool('phishing')">Check a message</button>
+                        <button class="btn btn-secondary" type="button" onclick="showPage('workspace')">Browse all tools</button>
+                    </div>
                 </div>
 
                 <div class="grid grid-4" id="dashboardStats">
 
                     <div class="card stat-card">
                         <div class="stat-icon">🔎</div>
-                        <div class="stat-value" id="totalScans">0</div>
-                        <div class="stat-label">Total Scans</div>
+                        <div class="stat-value" id="totalScans">—</div>
+                        <div class="stat-label">Checks completed</div>
                     </div>
 
                     <div class="card stat-card">
                         <div class="stat-icon">⚠️</div>
-                        <div class="stat-value" id="highRisks">0</div>
-                        <div class="stat-label">High Risk</div>
+                        <div class="stat-value" id="highRisks">—</div>
+                        <div class="stat-label">High or critical risk</div>
                     </div>
 
                     <div class="card stat-card">
                         <div class="stat-icon">📊</div>
-                        <div class="stat-value" id="avgRisk">0</div>
-                        <div class="stat-label">Average Risk</div>
+                        <div class="stat-value" id="avgRisk">—</div>
+                        <div class="stat-label">Average risk score</div>
                     </div>
 
                     <div class="card stat-card">
-                        <div class="stat-icon">🛡️</div>
-                        <div class="stat-value">18</div>
-                        <div class="stat-label">Security Features</div>
+                        <div class="stat-icon">🤖</div>
+                        <div class="stat-value" id="aiProviders">—</div>
+                        <div class="stat-label">AI providers ready</div>
                     </div>
 
                 </div>
 
-                <br>
+                <div class="grid grid-2" style="margin-bottom:18px">
+                    <div class="card">
+                        <div class="card-title"><div><h3>Risk distribution</h3><p>Based on your saved scan results</p></div></div>
+                        <div id="riskChartEmpty" class="empty">Loading scan data…</div>
+                        <div class="risk-distribution" id="riskDistribution" hidden>
+                            <div class="risk-row"><span>Critical</span><div class="risk-track"><div class="risk-fill risk-critical" id="riskCriticalBar"></div></div><strong id="riskCriticalCount">0</strong></div>
+                            <div class="risk-row"><span>High</span><div class="risk-track"><div class="risk-fill risk-high" id="riskHighBar"></div></div><strong id="riskHighCount">0</strong></div>
+                            <div class="risk-row"><span>Medium</span><div class="risk-track"><div class="risk-fill risk-medium" id="riskMediumBar"></div></div><strong id="riskMediumCount">0</strong></div>
+                            <div class="risk-row"><span>Low</span><div class="risk-track"><div class="risk-fill risk-low" id="riskLowBar"></div></div><strong id="riskLowCount">0</strong></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title"><div><h3>Service status</h3><p>Live response from this app</p></div></div>
+                        <div id="serviceStatusDetails" class="empty">Checking API, AI providers, and storage…</div>
+                    </div>
+                </div>
 
                 <div class="grid grid-2">
 
@@ -1770,20 +1807,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
                         </div>
 
                         <div id="securityTips">
-                            <div class="alert">
-                                <div class="alert-title">🔐 Use strong passwords</div>
-                                <p>Use unique passwords for important accounts.</p>
-                            </div>
-
-                            <div class="alert">
-                                <div class="alert-title">🎣 Watch for phishing</div>
-                                <p>Verify links and senders before opening suspicious messages.</p>
-                            </div>
-
-                            <div class="alert">
-                                <div class="alert-title">🔄 Keep software updated</div>
-                                <p>Install security updates from trusted sources.</p>
-                            </div>
+                            <div class="empty">Loading recommendations…</div>
                         </div>
 
                     </div>
@@ -2167,8 +2191,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
         const titles = {
 
             workspace: [
-                "Home",
-                "Choose what you want to do"
+                "All tools",
+                "Find the right security tool for your task"
             ],
 
             chat: [
@@ -2212,8 +2236,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
             ],
 
             dashboard: [
-                "Dashboard",
-                "Security operations overview"
+                "Overview",
+                "Your security activity and service status"
             ],
 
             history: [
@@ -2338,8 +2362,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
             accountName.title = email;
             const adminNav = document.getElementById("adminUsersNav");
             adminNav.hidden = !isAdmin;
+            loadDashboard();
             if (!isAdmin && document.getElementById("adminUsers").classList.contains("active")) {
-                showPage("workspace");
+                showPage("dashboard");
+            } else if (!document.querySelector(".page.active")) {
+                showPage("dashboard");
             }
         }
 
@@ -2502,12 +2529,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
                 btn.classList.remove("active");
             });
 
-            document.getElementById("backHomeButton").classList.toggle("visible", pageId !== "workspace");
+            document.getElementById("backHomeButton").classList.toggle("visible", pageId !== "dashboard");
 
             const activeButton = button || Array.from(document.querySelectorAll(".nav-btn")).find(navButton => {
                 const action = navButton.getAttribute("onclick") || "";
                 return action.includes(`showPage('${pageId}', this)`);
-            }) || document.querySelector('.nav-btn[onclick="showPage(\'workspace\', this)"]');
+            }) || document.querySelector('.nav-btn[onclick="showPage(\'dashboard\', this)"]');
             if (activeButton) activeButton.classList.add("active");
 
             if (titles[pageId]) {
@@ -2525,6 +2552,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
             if (pageId === "dashboard") {
                 loadDashboard();
+                loadApiStatus();
             }
 
             if (pageId === "history") {
@@ -4092,6 +4120,40 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
            DASHBOARD
         ========================================================= */
 
+        async function loadApiStatus() {
+            const headerText = document.getElementById("headerStatusText");
+            const sidebarText = document.getElementById("sidebarStatusText");
+            const detailBox = document.getElementById("serviceStatusDetails");
+            try {
+                const data = await safeFetchJSON("/api/status");
+                const ai = data.ai || {};
+                const readyProviders = [ai.gemini, ai.groq].filter(Boolean).length;
+                const apiOnline = data.status === "online";
+                const storageReady = Boolean(data.history_storage_reachable);
+                const healthy = apiOnline && readyProviders > 0 && storageReady;
+                const summary = !apiOnline ? "API unavailable" : readyProviders ? `API online · AI ${readyProviders}/2 ready` : "API online · AI unavailable";
+                headerText.textContent = summary;
+                sidebarText.textContent = storageReady ? `Storage: ${data.database || "Ready"}` : "Storage unavailable";
+                document.getElementById("headerStatusDot").classList.toggle("status-warning", !healthy);
+                document.getElementById("sidebarStatusDot").classList.toggle("status-warning", !storageReady);
+                document.getElementById("aiProviders").textContent = `${readyProviders}/2`;
+                detailBox.className = "service-status-list";
+                detailBox.innerHTML = `
+                    <div class="alert"><div class="alert-title">API</div><p>${apiOnline ? "Responding" : "Unavailable"}</p></div>
+                    <div class="alert"><div class="alert-title">AI providers</div><p>Gemini: ${ai.gemini ? "Ready" : "Not configured"} · Groq: ${ai.groq ? "Ready" : "Not configured"}</p></div>
+                    <div class="alert"><div class="alert-title">History storage</div><p>${escapeHTML(data.database || "Unknown")}${storageReady ? " · reachable" : " · unavailable"}</p></div>
+                `;
+            } catch (error) {
+                headerText.textContent = "Service status unavailable";
+                sidebarText.textContent = "Could not check services";
+                document.getElementById("headerStatusDot").classList.add("status-warning");
+                document.getElementById("sidebarStatusDot").classList.add("status-warning");
+                document.getElementById("aiProviders").textContent = "—";
+                detailBox.className = "empty";
+                detailBox.textContent = "Could not check services: " + error.message;
+            }
+        }
+
         async function loadDashboard() {
 
             try {
@@ -4101,12 +4163,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
                         "/api/security-dashboard"
                     );
 
-                document.getElementById(
-                    "totalScans"
-                ).textContent =
-                    data.total_scans ??
-                    data.totalScans ??
-                    0;
+                const totalScans = Number(data.total_scans ?? data.totalScans) || 0;
+                document.getElementById("totalScans").textContent = totalScans;
 
                 document.getElementById(
                     "highRisks"
@@ -4116,9 +4174,25 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
                 document.getElementById(
                     "avgRisk"
                 ).textContent =
-                    data.average_risk ??
-                    data.avgRisk ??
-                    0;
+                    totalScans ? `${Number(data.average_risk ?? data.avgRisk) || 0}/100` : "—";
+
+                const distribution = data.risk_distribution || {};
+                const riskCounts = {
+                    critical: Number(distribution.critical ?? data.critical_risk) || 0,
+                    high: Number(distribution.high ?? data.high_risk) || 0,
+                    medium: Number(distribution.medium ?? data.medium_risk) || 0,
+                    low: Number(distribution.low ?? data.low_risk) || 0
+                };
+                const maxRiskCount = Math.max(1, ...Object.values(riskCounts));
+                const chart = document.getElementById("riskDistribution");
+                const chartEmpty = document.getElementById("riskChartEmpty");
+                chart.hidden = totalScans === 0;
+                chartEmpty.hidden = totalScans > 0;
+                chartEmpty.textContent = totalScans ? "" : "No saved scan results yet. Run a check to see risk levels.";
+                Object.entries(riskCounts).forEach(([level, count]) => {
+                    document.getElementById(`risk${level[0].toUpperCase()}${level.slice(1)}Count`).textContent = count;
+                    document.getElementById(`risk${level[0].toUpperCase()}${level.slice(1)}Bar`).style.width = `${(count / maxRiskCount) * 100}%`;
+                });
 
                 const recent =
                     data.recent_scans ||
@@ -4213,6 +4287,13 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
                 }
 
             } catch (error) {
+                document.getElementById("totalScans").textContent = "—";
+                document.getElementById("highRisks").textContent = "—";
+                document.getElementById("avgRisk").textContent = "—";
+                document.getElementById("riskDistribution").hidden = true;
+                document.getElementById("riskChartEmpty").hidden = false;
+                document.getElementById("riskChartEmpty").textContent = "Risk data unavailable.";
+                document.getElementById("securityTips").innerHTML = '<div class="empty">Recommendations unavailable.</div>';
                 document.getElementById("recentScans").innerHTML = `
                     <div class="alert"><div class="alert-title">Dashboard unavailable</div><p>${escapeHTML(error.message)}</p></div>
                 `;
@@ -4357,6 +4438,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus
 
                 loadTheme();
                 initializeAuth();
+                loadApiStatus();
                 renderQuiz();
 
                 console.log(
